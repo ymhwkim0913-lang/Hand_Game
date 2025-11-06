@@ -1,6 +1,6 @@
 import cv2
 from hand_module.detector import HandDetector
-from rps_ml_svm import predict_rps   # ✅ SVM 기반 RPS 모델 사용
+from rps_ml_svm import predict_rps
 from hand_module.zero_game import count_thumbs
 from hand_module.chamcham import detect_hand_orientation
 
@@ -20,19 +20,19 @@ def main():
         # 손 랜드마크 추출
         hand_landmarks_list = detector.get_landmarks(frame)
 
-        # 🎮 RPS (가위바위보) - SVM 모델
+        # 가위바위보 (ML)
         if hand_landmarks_list:
             rps = predict_rps(hand_landmarks_list[0])
         else:
             rps = "no_hand"
 
-        # ✊ 제로게임 (엄지 개수)
+        # 제로게임 (엄지 개수)
         zero = count_thumbs(hand_landmarks_list)
 
-        # 👉 참참참 (손 방향)
+        # 참참참 (손 방향)
         cham = detect_hand_orientation(hand_landmarks_list)
 
-        # 콘솔 출력
+        # 디버깅 출력
         print(f"RPS: {rps} | ZERO: {zero} | CHAM: {cham}")
 
         # 화면 표시
@@ -45,7 +45,7 @@ def main():
 
         cv2.imshow("Hand Game Test", frame)
 
-        # 종료: Q 키
+        # q 키 종료
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
