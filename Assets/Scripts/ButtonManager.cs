@@ -35,7 +35,7 @@ public class ButtonManager : MonoBehaviour
 
     public void GAMESTART(Animator ani) {
         ani.Rebind();
-        // SceneManager.LoadScene("¥Ÿ¿Ω Ω≈");
+        SceneManager.LoadScene("GameScene");
     }
 
     public void gameEnd_Button() {
