@@ -203,6 +203,7 @@ public class InGameManager : MonoBehaviour
         score_Text.text = _Score.ToString("N0");
 
     }
+
     private void PrepareNextChamChamChamRound()
     {
         // 1. 미션을 랜덤으로 정합니다.
@@ -236,6 +237,7 @@ public class InGameManager : MonoBehaviour
         
         nextGame = randInt;
         nextGame_Text.text = gameList[randInt];
+
         if (nowGame == 1) // 참참참일 때만 다음 라운드를 준비합니다.
         {
             PrepareNextChamChamChamRound();
