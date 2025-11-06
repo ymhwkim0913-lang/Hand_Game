@@ -18,9 +18,9 @@ public class InGameManager : MonoBehaviour
     //게임 목록
     private string[] gameList = new string[] { "가위바위보", "참참참", "제로게임" };
     // 손 사진의 목록
-    private string[] handList = new string[] { "rock", "scissors", "paper",          // 바위가위보
-                                               "ccc_left", "ccc_mid", "ccc_right",  // 참참참(좌중우)
-                                               "zero_0", "zero_1", "zero_2"};       // 제로(0, 1, 2)
+    private string[] handList = new string[] { "rock", "scissors", "paper",       // 바위가위보
+                                             "ccc_left", "ccc_mid", "ccc_right",  // 참참참(좌중우)
+                                             "zero_0", "zero_1", "zero_2"};      // 제로(0, 1, 2)
 
     // 게임 점수 및 콤보 수
     private int _Score = 0;
@@ -34,10 +34,6 @@ public class InGameManager : MonoBehaviour
     private int nowGame = 0;    // 현재 게임 (0 : 가위바위보, 1 : 참참참, 2 : 제로게임)
     private int nextGame = 1;   // 다음 게임 (0 : 가위바위보, 1 : 참참참, 2 : 제로게임)
 
-    // 플레이어, 상대방의 손을 int(정수)로 저장합니다.
-    // {0:바위} {1:가위} {2:보}                      -> 가위바위보 변수
-    // {3:참참참-좌측} {4:참참참-중앙} {5:참참참-우측} -> 참참참 변수
-    // {6:제로 0개} {7:제로 1개} {8:제로 2개}         -> 제로게임 변수
     private int playerHand = 0;
     private int oppoentHand = 0;
 
@@ -62,14 +58,32 @@ public class InGameManager : MonoBehaviour
 
     #endregion
 
-    void Awake() {
+    void Awake()
+    {
         Instance = this;
     }
 
-    void Update() {
+    void Start()
+    {
+        // [중요] 게임 시작 시 텍스트 초기화
+        UpdateTimerText(remainTime);
 
+        // ▼▼▼▼▼ [ 버그 수정! ] ▼▼▼▼▼
+        // 게임을 시작 상태로 만듭니다. (이게 없어서 시간이 안 흘렀습니다)
         isGame = true;
+        // ▲▲▲▲▲ [ 버그 수정! ] ▲▲▲▲▲
+    }
 
+    void Update()
+    {
+
+        // isGame이 false면 (게임 오버) 아무것도 하지 않음
+        if (!isGame) return;
+
+        // 1. 시간 흐름 및 게임 오버 체크
+        timeTick();
+
+        // 2. 키보드 테스트 입력
         if (Input.GetKeyDown(KeyCode.A)) oppoentHandChange(0);
         if (Input.GetKeyDown(KeyCode.S)) oppoentHandChange(1);
         if (Input.GetKeyDown(KeyCode.D)) oppoentHandChange(2);
@@ -79,100 +93,114 @@ public class InGameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.C)) playerHandChange(2);
 
         if (Input.GetKeyDown(KeyCode.Space)) gameClear();
-
-        if (isGame) {
-            if (remainTime > 0.0) {
-                timeTick();
-            } else endGame();
-        }
     }
 
     /// <summary>
     /// 플레이어의 손을 바꿉니다
-    /// 
-    /// [예문] playerHandChange(2) => 플레이어 손을 paper(보)로 바꿈
-    /// 
     /// </summary>
-    /// <param name="val">바꿀 값</param>
-    public void playerHandChange(int val) {
+    public void playerHandChange(int val)
+    {
 
         if (playerHand == val) return;
 
         playerHand_effect.Clear();
         Texture2D loadtexture_player = Resources.Load<Texture2D>("Hand/" + handList[val]);
+
         var shapeModule_p = playerHand_effect.shape;
         playerHand = val;
         shapeModule_p.texture = loadtexture_player;
+
         playerHand_effect.Emit(15000);
     }
 
     /// <summary>
     /// 상대방의 손을 바꿉니다.
-    /// 
-    /// [예문] oppoentHandChange(2) => 상대방 손을 paper(보)로 바꿈
-    /// 
     /// </summary>
-    /// <param name="val">바꿀 값</param>
-    public void oppoentHandChange(int val) {
+    public void oppoentHandChange(int val)
+    {
         if (oppoentHand == val) return;
         oppoentHand_effect.Clear();
+
         Texture2D loadtexture_oppoent = Resources.Load<Texture2D>("Hand/" + handList[val]);
+
         var shapeModule_o = oppoentHand_effect.shape;
         oppoentHand = val;
         shapeModule_o.texture = loadtexture_oppoent;
+
         oppoentHand_effect.Emit(15000);
     }
 
     /// <summary>
     /// 상대방의 손을 확인합니다.
-    /// 이 코드를 이용하여 상대방의 손 모양을 확인하고 조건문(if)을 작성하세요.
-    /// 
-    /// [예문] if (checkOppoentHand() == 1)  => 상대의 손이 가위(1)일 때의 조건문
-    /// 
     /// </summary>
-    /// <returns></returns>
-    public int checkOppoentHand() {
+    public int checkOppoentHand()
+    {
         return oppoentHand;
     }
 
-    // 게임 성공 시 (게임 진행 30초마다 증가되는 시간 1초씩 감소) [예] 60초 진행 중 -> 3초만 증가
-    // 만약, 게임이 성공 했다면 이 함수를 호출하세요.
-    public void gameClear() {
-        pickGame();
+    // 게임 성공 시
+    public void gameClear()
+    {
+
+        Debug.Log("--- GAME CLEAR ---");
+
+        // 1. 리워드 적용 (원래 로직)
         _Combo++;
         addScore();
         remainTime += (5.0f - (survivalTime / 30.0f));
+
+        // 2. 텍스트 즉시 새로고침
+        UpdateTimerText(remainTime);
+
+        // 3. 다음 게임으로 넘김
+        pickGame();
     }
 
-    // 게임 실패 시, 게임 시작 -10초 및 콤보 깨짐
-    // 만약, 게임에 실패했다면 이 함수를 호출하세요.
-    public void gameFail() {
-        pickGame();
+    // 게임 실패 시
+    public void gameFail()
+    {
+
+        Debug.Log("--- GAME FAIL ---");
+
+        // 1. 벌칙 적용
         _Combo = 0;
         remainTime -= 10.0f;
+
+        // 2. 텍스트 즉시 새로고침
+        UpdateTimerText(remainTime);
+
+        // 3. 다음 게임으로 넘김
+        pickGame();
     }
 
 
 
 
- /////////////////////////////////////// 이 아래는 공개 함수가 아님 (건들필요X) ///////////////////////////////////////
+    /////////////////////////////////////// 이 아래는 공개 함수가 아님 (건들필요X) ///////////////////////////////////////
 
     // 게임 오버
-    private void endGame() {
+    private void endGame()
+    {
+        // [중요] isGame을 false로 바꿔서 Update()가 더 이상 timeTick()을 실행하지 못하게 함
         isGame = false;
+
+        // [중요] 시간이 0 이하가 됐으므로 텍스트를 0으로 고정
+        UpdateTimerText(0);
     }
 
     // 점수를 증가시킵니다
-    private void addScore() {
+    private void addScore()
+    {
 
         float multi = scoreCurve.Evaluate(survivalTime);
-        _Score += (int)((1000 * _Combo) * (multi));     // 기본 1000점 x 콤보 수 x 생존 시간 보너스(최대 3배)
+        _Score += (int)((1000 * _Combo) * (multi));      // 기본 1000점 x 콤보 수 x 생존 시간 보너스(최대 3배)
         score_Text.text = _Score.ToString("N0");
 
     }
 
-    // 게임을 랜덤으로 뽑음, 그 후에 화면에 있는 NEXT와 NOW 텍스트를 바꿈
-    private void pickGame() {
+    // 게임을 랜덤으로 뽑음
+    private void pickGame()
+    {
 
         nowGame = nextGame;
         nowGame_Text.text = gameList[nowGame];
@@ -182,18 +210,50 @@ public class InGameManager : MonoBehaviour
         nextGame_Text.text = gameList[randInt];
     }
 
-    // 제한시간 감소 및 텍스트 변경
-    private void timeTick() {
 
+    // 제한시간 감소 및 텍스트 변경
+    private void timeTick()
+    {
+
+        // 1. 시간 감소
         remainTime -= Time.deltaTime;
         survivalTime += Time.deltaTime;
 
+        // 2. 시간이 0 이하로 내려갔는지 '스스로' 확인
+        if (remainTime <= 0.0f)
+        {
+            endGame(); // 게임 오버 처리
+            return;    // 텍스트 업데이트 등을 막고 즉시 종료
+        }
+
+        // 3. (시간이 0보다 클 때만) 생존 시간 텍스트 업데이트
         int minutes = (int)(survivalTime / 60);
         int seconds = (int)(survivalTime % 60);
-
-        if (remainTime > 10.0f) remainTime_Text.text = remainTime.ToString("F0");
-        else remainTime_Text.text = remainTime.ToString("F1");
         survivalTime_Text.text = $"{minutes}:{seconds:00}";
+
+        // 4. (시간이 0보다 클 때만) 남은 시간 텍스트 업데이트
+        UpdateTimerText(remainTime);
     }
 
+    /// <summary>
+    /// 남은 시간(remainTime) 텍스트를 즉시 업데이트합니다.
+    /// </summary>
+    private void UpdateTimerText(float time)
+    {
+        // 10초 초과면 소수점 없이
+        if (time > 10.0f)
+        {
+            remainTime_Text.text = time.ToString("F0");
+        }
+        // 0~10초 사이면 소수점 1자리
+        else if (time > 0.0f)
+        {
+            remainTime_Text.text = time.ToString("F1");
+        }
+        // 0 이하이면 "0.0"으로 고정
+        else
+        {
+            remainTime_Text.text = "0.0";
+        }
+    }
 }
