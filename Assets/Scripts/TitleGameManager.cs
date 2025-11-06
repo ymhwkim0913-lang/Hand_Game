@@ -7,9 +7,9 @@ public class TitleGameManager : MonoBehaviour
     public GameObject introUI;
 
     // Start is called before the first frame update
-    void Start()
-    {
+    void Start() {
         introUI.SetActive(true);
+        DontDestroyOnLoad(introUI);
     }
 
     // Update is called once per frame

@@ -58,20 +58,8 @@ public class InGameManager : MonoBehaviour
 
     #endregion
 
-    void Awake()
-    {
+    void Awake() {
         Instance = this;
-    }
-
-    void Start()
-    {
-        // [중요] 게임 시작 시 텍스트 초기화
-        UpdateTimerText(remainTime);
-
-        // ▼▼▼▼▼ [ 버그 수정! ] ▼▼▼▼▼
-        // 게임을 시작 상태로 만듭니다. (이게 없어서 시간이 안 흘렀습니다)
-        isGame = true;
-        // ▲▲▲▲▲ [ 버그 수정! ] ▲▲▲▲▲
     }
 
     void Update()
@@ -138,6 +126,10 @@ public class InGameManager : MonoBehaviour
         return oppoentHand;
     }
 
+    public void GameStart() {
+        isGame = true;
+    }
+
     // 게임 성공 시
     public void gameClear()
     {
@@ -149,10 +141,6 @@ public class InGameManager : MonoBehaviour
         addScore();
         remainTime += (5.0f - (survivalTime / 30.0f));
 
-        // 2. 텍스트 즉시 새로고침
-        UpdateTimerText(remainTime);
-
-        // 3. 다음 게임으로 넘김
         pickGame();
     }
 
@@ -166,26 +154,16 @@ public class InGameManager : MonoBehaviour
         _Combo = 0;
         remainTime -= 10.0f;
 
-        // 2. 텍스트 즉시 새로고침
-        UpdateTimerText(remainTime);
-
         // 3. 다음 게임으로 넘김
         pickGame();
     }
 
-
-
-
-    /////////////////////////////////////// 이 아래는 공개 함수가 아님 (건들필요X) ///////////////////////////////////////
-
     // 게임 오버
-    private void endGame()
+    private void GameOver()
     {
         // [중요] isGame을 false로 바꿔서 Update()가 더 이상 timeTick()을 실행하지 못하게 함
         isGame = false;
 
-        // [중요] 시간이 0 이하가 됐으므로 텍스트를 0으로 고정
-        UpdateTimerText(0);
     }
 
     // 점수를 증가시킵니다
@@ -214,7 +192,6 @@ public class InGameManager : MonoBehaviour
     // 제한시간 감소 및 텍스트 변경
     private void timeTick()
     {
-
         // 1. 시간 감소
         remainTime -= Time.deltaTime;
         survivalTime += Time.deltaTime;
@@ -222,38 +199,17 @@ public class InGameManager : MonoBehaviour
         // 2. 시간이 0 이하로 내려갔는지 '스스로' 확인
         if (remainTime <= 0.0f)
         {
-            endGame(); // 게임 오버 처리
-            return;    // 텍스트 업데이트 등을 막고 즉시 종료
+            remainTime = 0.0f;
+            GameOver(); // 게임 오버 처리
         }
 
-        // 3. (시간이 0보다 클 때만) 생존 시간 텍스트 업데이트
+        // 3. (시간이 0보다 클 때만) 생존 시간 & 남은 시간 텍스트 업데이트
         int minutes = (int)(survivalTime / 60);
         int seconds = (int)(survivalTime % 60);
         survivalTime_Text.text = $"{minutes}:{seconds:00}";
 
-        // 4. (시간이 0보다 클 때만) 남은 시간 텍스트 업데이트
-        UpdateTimerText(remainTime);
+        if (remainTime > 10.0f) remainTime_Text.text = remainTime.ToString("F0");
+        else remainTime_Text.text = remainTime.ToString("F1");
     }
 
-    /// <summary>
-    /// 남은 시간(remainTime) 텍스트를 즉시 업데이트합니다.
-    /// </summary>
-    private void UpdateTimerText(float time)
-    {
-        // 10초 초과면 소수점 없이
-        if (time > 10.0f)
-        {
-            remainTime_Text.text = time.ToString("F0");
-        }
-        // 0~10초 사이면 소수점 1자리
-        else if (time > 0.0f)
-        {
-            remainTime_Text.text = time.ToString("F1");
-        }
-        // 0 이하이면 "0.0"으로 고정
-        else
-        {
-            remainTime_Text.text = "0.0";
-        }
-    }
 }

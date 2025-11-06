@@ -12,9 +12,6 @@ using System.Threading;
 
 public class RPS_Webcam_Controller : MonoBehaviour
 {
-    [Header("관리자 연결")]
-    [SerializeField] private InGameManager inGameManager;
-
     [Header("UI (미션 표시용)")]
     [SerializeField] private TextMeshProUGUI instructionText;
 
@@ -57,8 +54,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
 
     void Start()
     {
-        if (inGameManager == null) inGameManager = FindObjectOfType<InGameManager>();
-
         if (nowGame_Text_Reference == null)
         {
             Debug.LogError("RPS_Webcam_Controller: 'Now Game Text Reference'가 연결되지 않았습니다!");
@@ -176,7 +171,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
     private void ProcessHandData(int playerVal)
     {
         // 1. 플레이어 손 모양을 화면에 즉시 표시 (요구사항: 플레이어가 바꿀 수 있게)
-        inGameManager.playerHandChange(playerVal);
+        InGameManager.Instance.playerHandChange(playerVal);
 
         // 2. (중요) 여기서 더 이상 승패 판정을 하지 않습니다.
         //    판정은 RPSMissionTimer 코루틴이 타이머 종료 시 1회만 수행합니다.
@@ -191,7 +186,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
 
         // 1. 컴퓨터가 낼 손(opponentHand)과 미션(currentMission)을 랜덤으로 결정
         int opponentHand = UnityEngine.Random.Range(0, 3);
-        inGameManager.oppoentHandChange(opponentHand); // 컴퓨터 손 모양 화면에 표시
+        InGameManager.Instance.oppoentHandChange(opponentHand); // 컴퓨터 손 모양 화면에 표시
 
         currentMission = (Mission)UnityEngine.Random.Range(0, 3);
         instructionText.text = GetMissionString(currentMission, opponentHand); // 미션 텍스트 표시
@@ -219,7 +214,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
         if (success)
         {
             // 리워드 (시간 증가, 점수/콤보 획득)
-            inGameManager.gameClear();
+            InGameManager.Instance.gameClear();  
             // 난이도 상승 (제한 시간 0.1초 감소)
             DecreaseTimeLimit();
         }
@@ -227,7 +222,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
         else
         {
             // 벌칙 (시간 감소, 콤보 리셋)
-            inGameManager.gameFail();
+            InGameManager.Instance.gameFail();
         }
 
         // 5. 미션 종료
@@ -259,7 +254,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
     private bool PerformRPSCheck(int playerVal)
     {
         // [중요] checkOppoentHand()는 판정하는 '순간'에 호출해야 함
-        int opponentVal = inGameManager.checkOppoentHand();
+        int opponentVal = InGameManager.Instance.checkOppoentHand();
         bool success = false;
         switch (currentMission)
         {
