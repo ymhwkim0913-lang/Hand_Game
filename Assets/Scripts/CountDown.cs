@@ -61,6 +61,7 @@ public class CountDown : MonoBehaviour
     }
 
     private void Animation() {
+
         AudioManager.Instance.playSFX(0);
         countdownText.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
 

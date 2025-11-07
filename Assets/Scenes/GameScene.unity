@@ -333,6 +333,7 @@ MonoBehaviour:
   score_Text: {fileID: 786401642}
   playerHand_effect: {fileID: 1602525830}
   oppoentHand_effect: {fileID: 778547153}
+  missionText: {fileID: 925587367}
 --- !u!114 &237538185
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6545,7 +6546,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "\uBE44\uACA8\uB77C!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a97ab682fd4f574fbe0d330682a1d85, type: 2}
   m_sharedMaterial: {fileID: 483245545733407209, guid: 6a97ab682fd4f574fbe0d330682a1d85, type: 2}
@@ -6554,8 +6555,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 16777215
+  m_fontColor: {r: 1, g: 1, b: 1, a: 0}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:

@@ -29,7 +29,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
     private Mission currentMission;
 
     [Header("가위바위보 난이도 설정")]
-    [SerializeField] private float rpsTimeLimit = 3.0f; // 현재 제한 시간 (시작 값)
+    [SerializeField] private float rpsTimeLimit = 30.0f; // 현재 제한 시간 (시작 값)
     [SerializeField] private float rpsMinTimeLimit = 0.5f; // 최소 제한 시간 (여기까지 어려워짐)
     [SerializeField] private float rpsTimeDecrement = 0.1f; // 성공 시 단축되는 시간
 
@@ -67,6 +67,8 @@ public class RPS_Webcam_Controller : MonoBehaviour
         receiveThread = new Thread(new ThreadStart(ReceiveData));
         receiveThread.IsBackground = true;
         receiveThread.Start();
+
+
     }
 
     void Update()

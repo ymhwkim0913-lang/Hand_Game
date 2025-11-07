@@ -2,6 +2,7 @@
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class InGameManager : MonoBehaviour
 {
@@ -72,6 +73,8 @@ public class InGameManager : MonoBehaviour
     void Update()
     {
 
+
+
         // isGame이 false면 (게임 오버) 아무것도 하지 않음
         if (!isGame) return;
 
@@ -87,7 +90,32 @@ public class InGameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.X)) playerHandChange(1);
         if (Input.GetKeyDown(KeyCode.C)) playerHandChange(2);
 
-        if (Input.GetKeyDown(KeyCode.Space)) gameClear();
+        //if (Input.GetKeyDown(KeyCode.Space)) rcpMissionFail();
+
+    }
+
+    /// <summary>
+    /// 미션이 애니메이션으로 나타납니다.
+    /// </summary>
+    public void MissionCall(string text) {
+
+        missionText.text = "이겨라!"; // 임시
+
+        missionText.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
+
+        LeanTween.value(gameObject, 0f, 1f, 0.2f).
+        setOnUpdate((float val) => {
+                missionText.alpha = val;
+            });
+
+        LeanTween.scale(missionText.gameObject, new Vector3(1f, 1f, 1f), 0.1f).
+            setEase(LeanTweenType.easeOutBack);
+
+        LeanTween.value(gameObject, 2.5f, 0f, 2f).
+        setOnUpdate((float val) => {
+            missionText.alpha = val;
+        });
+
     }
 
     /// <summary>
@@ -107,26 +135,26 @@ public class InGameManager : MonoBehaviour
 
         playerHand_effect.Emit(15000);
 
-        // ★ 현재 게임이 "참참참"일 때만 승패를 판정합니다.
-        if (nowGame == 1)
-        {
-            // 1. 상대방의 손이 무엇인지 가져옵니다. (3:좌, 4:중, 5:우)
-            int oppoHand = checkOppoentHand();
-
-            // 2. "val" 값이 플레이어의 손입니다. (3:좌, 4:중, 5:우)
-            // 3. 1단계에서 저장해둔 미션(isFollowMission)을 확인합니다.
-
-            if (isFollowMission == true) // "따라하기" 미션일 때
-            {
-                if (val == oppoHand) gameClear(); // (성공) 따라했으면 승리!
-                else gameFail();                 // (실패) 못 따라했으면 패배!
-            }
-            else // "피하기" 미션일 때
-            {
-                if (val != oppoHand) gameClear(); // (성공) 피했으면 승리!
-                else gameFail();                 // (실패) 못 피했으면 패배!
-            }
-        }
+        //// ★ 현재 게임이 "참참참"일 때만 승패를 판정합니다.
+        //if (nowGame == 1)
+        //{
+        //    // 1. 상대방의 손이 무엇인지 가져옵니다. (3:좌, 4:중, 5:우)
+        //    int oppoHand = checkOppoentHand();
+        //
+        //    // 2. "val" 값이 플레이어의 손입니다. (3:좌, 4:중, 5:우)
+        //    // 3. 1단계에서 저장해둔 미션(isFollowMission)을 확인합니다.
+        //
+        //    if (isFollowMission == true) // "따라하기" 미션일 때
+        //    {
+        //        if (val == oppoHand) gameClear(); // (성공) 따라했으면 승리!
+        //        else gameFail();                 // (실패) 못 따라했으면 패배!
+        //    }
+        //    else // "피하기" 미션일 때
+        //    {
+        //        if (val != oppoHand) gameClear(); // (성공) 피했으면 승리!
+        //        else gameFail();                 // (실패) 못 피했으면 패배!
+        //    }
+        //}
     }
 
     /// <summary>
@@ -155,6 +183,11 @@ public class InGameManager : MonoBehaviour
     }
 
     public void GameStart() {
+
+        // 미션 텍스트 띄우기
+        MissionCall("ㅎㅇ");
+        // 브금 재생
+        AudioManager.Instance.playSFX(1);
         isGame = true;
     }
 
@@ -238,24 +271,26 @@ public class InGameManager : MonoBehaviour
         nextGame = randInt;
         nextGame_Text.text = gameList[randInt];
 
-        if (nowGame == 1) // 참참참일 때만 다음 라운드를 준비합니다.
-        {
-            PrepareNextChamChamChamRound();
-        }
-        else // 가위바위보(0) 또는 제로게임(2)일 때 (참참참 외의 게임)
-        {
-            missionText.text = "";
+        // if (nowGame == 1) // 참참참일 때만 다음 라운드를 준비합니다.
+        // {
+        //     PrepareNextChamChamChamRound();
+        // }
+        // else // 가위바위보(0) 또는 제로게임(2)일 때 (참참참 외의 게임)
+        // {
+        //     missionText.text = "";
+        // 
+        //     // 다른 게임의 상대방 손 움직임을 위한 로직 (최소한의 동작)
+        //     if (nowGame == 0) // 가위바위보
+        //     {
+        //         oppoentHandChange(Random.Range(0, 3));
+        //     }
+        //     else if (nowGame == 2) // 제로게임
+        //     {
+        //         oppoentHandChange(Random.Range(6, 9));
+        //     }
+        // }
 
-            // 다른 게임의 상대방 손 움직임을 위한 로직 (최소한의 동작)
-            if (nowGame == 0) // 가위바위보
-            {
-                oppoentHandChange(Random.Range(0, 3));
-            }
-            else if (nowGame == 2) // 제로게임
-            {
-                oppoentHandChange(Random.Range(6, 9));
-            }
-        }
+
     }
 
 

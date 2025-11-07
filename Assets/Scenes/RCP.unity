@@ -197,6 +197,7 @@ MonoBehaviour:
   score_Text: {fileID: 786401642}
   playerHand_effect: {fileID: 1602525830}
   oppoentHand_effect: {fileID: 778547153}
+  missionText: {fileID: 0}
 --- !u!1 &241665231
 GameObject:
   m_ObjectHideFlags: 0
@@ -6863,6 +6864,7 @@ MonoBehaviour:
   score_Text: {fileID: 786401642}
   playerHand_effect: {fileID: 1602525830}
   oppoentHand_effect: {fileID: 778547153}
+  missionText: {fileID: 925587367}
 --- !u!4 &1500786806
 Transform:
   m_ObjectHideFlags: 0
@@ -6890,7 +6892,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 535ce42354e33d341be78716a8051e14, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inGameManager: {fileID: 237538184}
   instructionText: {fileID: 1802064672}
   nowGame_Text_Reference: {fileID: 241665233}
   rpsTimeLimit: 3
