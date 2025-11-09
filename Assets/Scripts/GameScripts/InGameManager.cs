@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Net.NetworkInformation;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -37,8 +38,18 @@ public class InGameManager : MonoBehaviour
 
     private int playerHand = 0;
     private int oppoentHand = 0;
-    private bool isFollowMission = true; // 참참참 미션 (true:따라하기, false:피하기)
 
+    // 최초 게임당 시간
+    private const float MAXpartTime = 3.0f;
+
+    // 각 게임당 시간
+    public float partTime { get; private set; } = 3.0f;
+
+    private float minigameTime = 3.0f;
+    // 성공한 게임 수
+    private int clearedGame = 0;
+
+    public static string missionString;
     #endregion
 
     #region ★ 하이라키창에서 선택할 것들 (건들 필요X)
@@ -59,21 +70,19 @@ public class InGameManager : MonoBehaviour
     private ParticleSystem oppoentHand_effect;
     [SerializeField]
     private TextMeshProUGUI missionText;
+    [SerializeField]
+    private RectTransform timeGauge;
 
     #endregion
 
     void Awake() {
         Instance = this;
     }
-    void Start()
-    {
-        pickGame(); // 게임 시작 시 1회 호출하여 NOW GAME의 상대방 손을 설정합니다.
+    void Start() {
     }
 
     void Update()
     {
-
-
 
         // isGame이 false면 (게임 오버) 아무것도 하지 않음
         if (!isGame) return;
@@ -90,16 +99,21 @@ public class InGameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.X)) playerHandChange(1);
         if (Input.GetKeyDown(KeyCode.C)) playerHandChange(2);
 
-        //if (Input.GetKeyDown(KeyCode.Space)) rcpMissionFail();
+        if (Input.GetKeyDown(KeyCode.Space)) gameClear();
 
     }
 
     /// <summary>
+    /// 미니게임의 제한시간을 get합니다.
+    /// </summary>
+    /// <returns> 미니게임의 제한 시간 </returns>
+
+    /// <summary>
     /// 미션이 애니메이션으로 나타납니다.
     /// </summary>
-    public void MissionCall(string text) {
+    public void MissionCall() {
 
-        missionText.text = "이겨라!"; // 임시
+        missionText.text = missionString;
 
         missionText.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
 
@@ -111,11 +125,19 @@ public class InGameManager : MonoBehaviour
         LeanTween.scale(missionText.gameObject, new Vector3(1f, 1f, 1f), 0.1f).
             setEase(LeanTweenType.easeOutBack);
 
-        LeanTween.value(gameObject, 2.5f, 0f, 2f).
+        LeanTween.value(gameObject, 2.5f, 0f, 1f).
         setOnUpdate((float val) => {
             missionText.alpha = val;
         });
 
+    }
+
+    /// <summary>
+    /// 게임 시작 전
+    /// </summary>
+    public void opening() {
+        playerHand_effect.Play();
+        oppoentHand_effect.Play();
     }
 
     /// <summary>
@@ -184,23 +206,19 @@ public class InGameManager : MonoBehaviour
 
     public void GameStart() {
 
-        // 미션 텍스트 띄우기
-        MissionCall("ㅎㅇ");
         // 브금 재생
         AudioManager.Instance.playSFX(1);
         isGame = true;
+        MissionCall();
     }
 
     // 게임 성공 시
     public void gameClear()
     {
-
-        Debug.Log("--- GAME CLEAR ---");
-
-        // 1. 리워드 적용 (원래 로직)
         _Combo++;
+        clearedGame++;
         addScore();
-        remainTime += (5.0f - (survivalTime / 30.0f));
+        remainTime += (5.0f - (survivalTime / 20.0f));
 
         pickGame();
     }
@@ -208,9 +226,6 @@ public class InGameManager : MonoBehaviour
     // 게임 실패 시
     public void gameFail()
     {
-
-        Debug.Log("--- GAME FAIL ---");
-
         // 1. 벌칙 적용
         _Combo = 0;
         remainTime -= 10.0f;
@@ -237,29 +252,6 @@ public class InGameManager : MonoBehaviour
 
     }
 
-    private void PrepareNextChamChamChamRound()
-    {
-        // 1. 미션을 랜덤으로 정합니다.
-        isFollowMission = (Random.Range(0, 2) == 0);
-        if (isFollowMission)
-        {
-            missionText.text = "따라 해라!";
-            missionText.color = Color.yellow;
-        }
-        else
-        {
-            missionText.text = "피해라!";
-            missionText.color = Color.cyan;
-        }
-
-        // 2. 상대방 방향을 랜덤으로 정합니다. (3:좌, 4:중, 5:우)
-        int oppoDir = Random.Range(3, 6);
-
-        // 3. 상대방 손을 미리 바꿉니다.
-        oppoentHandChange(oppoDir);
-    }
-
-    // 게임을 랜덤으로 뽑음
     private void pickGame()
     {
 
@@ -271,28 +263,12 @@ public class InGameManager : MonoBehaviour
         nextGame = randInt;
         nextGame_Text.text = gameList[randInt];
 
-        // if (nowGame == 1) // 참참참일 때만 다음 라운드를 준비합니다.
-        // {
-        //     PrepareNextChamChamChamRound();
-        // }
-        // else // 가위바위보(0) 또는 제로게임(2)일 때 (참참참 외의 게임)
-        // {
-        //     missionText.text = "";
-        // 
-        //     // 다른 게임의 상대방 손 움직임을 위한 로직 (최소한의 동작)
-        //     if (nowGame == 0) // 가위바위보
-        //     {
-        //         oppoentHandChange(Random.Range(0, 3));
-        //     }
-        //     else if (nowGame == 2) // 제로게임
-        //     {
-        //         oppoentHandChange(Random.Range(6, 9));
-        //     }
-        // }
-
-
+        StartCoroutine(CountDown.Instance.CountDownStart(timeSet));
     }
 
+    private void timeSet() {
+        minigameTime = partTime;
+    }
 
     // 제한시간 감소 및 텍스트 변경
     private void timeTick()
@@ -300,6 +276,13 @@ public class InGameManager : MonoBehaviour
         // 1. 시간 감소
         remainTime -= Time.deltaTime;
         survivalTime += Time.deltaTime;
+
+        if (minigameTime >= 0.0f) minigameTime -= Time.deltaTime;
+        partTime = MAXpartTime - (clearedGame / 10);
+        partTime = Mathf.Clamp(partTime, 0.5f, 3.0f);
+        float normalized = minigameTime / partTime;
+        normalized = Mathf.Clamp01(normalized);
+        timeGauge.sizeDelta = new Vector2(1920 * normalized, 30);
 
         // 2. 시간이 0 이하로 내려갔는지 '스스로' 확인
         if (remainTime <= 0.0f)

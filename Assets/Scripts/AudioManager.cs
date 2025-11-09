@@ -26,14 +26,22 @@ public class AudioManager : MonoBehaviour
     }
 
     public void playSFX(int index) {
-        // 유효한 인덱스인지 확인
         if (index >= 0 && index < audioClips.Count) {
-            // 이미 재생 중인 오디오가 있으면 정지 (필요에 따라 주석 처리 가능)
-            sfxSource.Stop();
+            AudioClip clip = audioClips[index];
 
-            // 선택한 클립 할당 및 재생
-            sfxSource.clip = audioClips[index];
-            sfxSource.Play();
+            // 새로운 오디오 소스 객체 생성
+            GameObject sfxObject = new GameObject("SFX_" + clip.name);
+            sfxObject.transform.parent = this.transform; // AudioManager 하위로 넣기
+
+            AudioSource newSource = sfxObject.AddComponent<AudioSource>();
+            newSource.clip = clip;
+            newSource.volume = sfxSource.volume;  // 기존 sfxSource의 설정을 복사
+            newSource.pitch = sfxSource.pitch;
+            newSource.spatialBlend = sfxSource.spatialBlend;
+            newSource.Play();
+
+            // 재생이 끝나면 자동으로 삭제
+            Destroy(sfxObject, clip.length);
         }
         else {
             Debug.LogWarning($"유효하지 않은 오디오 인덱스입니다: {index}");
