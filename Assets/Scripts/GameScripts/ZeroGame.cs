@@ -1,46 +1,83 @@
+/*
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using TMPro;
 using UnityEngine.UI;
+
+//C# 네트워킹(UDP)을 위해 필요한 기능
+using System; // 기본 C# 기능
+using System.Text; // 문자열 인코딩(UTF8)을 위해 필요
+using System.Net; // IP 주소(IPAddress, IPEndPoint)를 위해 필요
+using System.Net.Sockets; // UDP 통신(UdpClient, SocketException)을 위해 필요
+using System.Threading; // 별도 스레드(Thread)를 실행하기 위해 필요
 
 public class ZeroGame : MonoBehaviour
 {
-    public TextMeshProUGUI callText;      // 게임이 부른 숫자를 표시하는 텍스트
-    public TextMeshProUGUI resultText;    // 결과(성공/실패/게임오버)를 표시하는 텍스트
-    public TextMeshProUGUI scoreText;     // 점수를 표시하는 텍스트
-    public Button retryButton;            // 다시하기 버튼
-    public Image backgroundPanel;         // 배경 색을 제어하는 패널
+    // --- 손 모양 상수 (플레이어는 0, 1, 2 중 하나를 냄) ---
+    private const int HAND_NONE = -1;
 
-    private int playerCall;               // 게임이 랜덤으로 부른 숫자
-    private int playerHand;               // 플레이어가 낸 숫자
-    private int score = 0;                // 점수
-    private float roundTime = 3f;         // 제한 시간 (초 단위)
-    private bool gameOver = false;        // 게임 종료 여부
-    private Color baseColor = new Color32(46, 46, 46, 255);      // 기본 배경색 (회색)
-    private Color successColor = new Color32(76, 175, 80, 255);  // 성공 시 색상
-    private Color failColor = new Color32(244, 67, 54, 255);     // 실패 시 색상
+    private bool isAttackMode = true;       //현재 모드를 기억할 스위치
+    private int playerCall;             // 게임이 랜덤으로 부른 숫자
+    private int computerHand;           // 컴퓨터가 랜덤으로 낸 숫자 (0~2)
+    private int playerHand;             // 플레이어가 낸 숫자
 
     void Start()
     {
-        retryButton.gameObject.SetActive(false); // 처음에는 다시하기 버튼 숨김
-        backgroundPanel.color = baseColor;       // 배경을 기본색으로 설정
-        StartNewRound();                         // 첫 라운드 시작
-        UpdateScore();                           // 점수 초기화 표시
+        retryButton.gameObject.SetActive(false);
+        backgroundPanel.color = baseColor;
+        StartNewRound();
+        UpdateScore();
+    }
+
+    void Update()
+    {
+        if (gameOver) return;
+
+        int handInput = -1;
+        if (Input.GetKeyDown(KeyCode.Alpha0) || Input.GetKeyDown(KeyCode.Keypad0)) handInput = 0;
+        else if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) handInput = 1;
+        else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) handInput = 2;
+
+        if (handInput != -1)
+        {
+            Debug.Log($"[DEV] Keyboard Input: {handInput}");
+            PlayerHandNumber(handInput);
+        }
     }
 
     // 새로운 라운드를 시작하는 함수
     void StartNewRound()
     {
-        if (gameOver) return; // 게임이 끝난 상태면 실행하지 않음
+        if (gameOver) return;
 
-        CancelInvoke(); // 이전에 예약된 Invoke 함수 취소
+        CancelInvoke();
 
-        backgroundPanel.color = baseColor; // 라운드 시작할 때 배경색을 기본색으로 초기화
+        backgroundPanel.color = baseColor;
 
-        playerCall = Random.Range(0, 3);   // 0~2 중 랜덤 숫자 선택
-        callText.text = $"게임 콜: {playerCall}"; // 랜덤 숫자를 화면에 표시
-        resultText.text = "결과 대기중...";       // 결과 텍스트 초기화
+        playerCall = Random.Range(0, 5);    // 0~4 중 랜덤 숫자 선택
+
+        // 풀 수 없는 문제 방지 로직
+        int maxPossibleComputerHand = playerCall;
+        int finalMax = Mathf.Min(2, maxPossibleComputerHand);
+        int minComputerHand = Mathf.Max(0, playerCall - 2);
+        computerHand = Random.Range(minComputerHand, finalMax + 1);
+
+        // 공격/수비 모드 랜덤 결정
+        isAttackMode = (Random.Range(0, 2) == 0);
+
+
+        callText.text = $"Game Call: {playerCall}";
+        computerHandText.text = $"Computer: {computerHand}";
+        resultText.text = "Waiting...";
+
+        if (isAttackMode)
+        {
+            modeText.text = "Attack!"; //숫자를 맞혀라!
+        }
+        else
+        {
+            modeText.text = "Defense!"; //숫자를 피해라!
+        }
 
         Invoke("TimeOut", roundTime); // 제한 시간이 지나면 TimeOut() 실행
     }
@@ -48,63 +85,85 @@ public class ZeroGame : MonoBehaviour
     // 플레이어가 숫자를 입력했을 때 실행되는 함수
     public void PlayerHandNumber(int number)
     {
-        if (gameOver) return; // 게임 종료 상태면 무시
+        if (gameOver) return;
+        if (number < 0 || number > 2) return;
 
-        playerHand = number;  // 입력한 숫자를 저장
-        CancelInvoke("TimeOut"); // 제한 시간 타이머 취소
+        playerHand = number;
+        CancelInvoke("TimeOut");
 
-        if (playerHand == playerCall) // 정답인 경우
+        int totalHand = playerHand + computerHand;
+
+        bool isSuccess = false; // 성공 여부를 저장할 변수
+
+        if (isAttackMode)
         {
-            backgroundPanel.color = successColor; // 배경을 성공 색으로 변경
-            resultText.text = "성공!";
-            score++;                              // 점수 1 증가
-            UpdateScore();                        // 점수 UI 갱신
+            //공격 모드 합계가 Call과 같아야 성공
+            isSuccess = (totalHand == playerCall);
+        }
+        else
+        {
+            //수비 모드 합계가 Call과 달라야 성공
+            isSuccess = (totalHand != playerCall);
+        }
 
-            roundTime = Mathf.Max(0.5f, roundTime - 0.2f); // 제한 시간을 점점 줄임 (최소 0.5초)
+        if (isSuccess) // 정답인 경우 (공격 성공 또는 수비 성공)
+        {
+            backgroundPanel.color = successColor;
+            resultText.text = "Success!";
 
-            Invoke("StartNewRound", 1.5f); // 잠시 후 새 라운드 시작
+            score++;
+            UpdateScore();
+            roundTime = Mathf.Max(1f, roundTime - 0.2f);
+            Invoke("StartNewRound", 1.5f);
         }
         else // 틀린 경우
         {
-            backgroundPanel.color = failColor; // 배경을 실패 색으로 변경
-            resultText.text = "실패!";
-            GameOver();                        // 게임 종료 처리
+            backgroundPanel.color = failColor;
+
+            string failMsg = isAttackMode ? "실패! (못 맞힘)" : "실패! (피해야 함)";
+            resultText.text = $"{failMsg} / ({computerHand} + {playerHand} = {totalHand})";
+
+            GameOver();
         }
     }
 
     // 제한 시간이 초과되었을 때 실행되는 함수
     void TimeOut()
     {
-        backgroundPanel.color = failColor; // 시간 초과 시 실패 색상 표시
-        GameOver();                        // 게임 종료 처리
+        backgroundPanel.color = failColor;
+        resultText.text = "Time Out!";
+        GameOver();
     }
 
     // 게임 종료 처리 함수
     void GameOver()
     {
-        gameOver = true;                   // 게임 상태를 종료로 설정
-        resultText.text = "게임 오버";     // 결과 텍스트 표시
-        callText.text = "";                 // 콜 숫자 초기화
-        retryButton.gameObject.SetActive(true); // 다시하기 버튼 표시
+        gameOver = true;
+        resultText.text = "Game Over";
+        callText.text = "";
+        computerHandText.text = "";
+        modeText.text = "";
+        retryButton.gameObject.SetActive(true);
     }
 
     // 점수 UI를 갱신하는 함수
     void UpdateScore()
     {
-        scoreText.text = $"점수: {score}";
+        scoreText.text = $"Score: {score}";
     }
 
     // 다시하기 버튼을 눌렀을 때 실행되는 함수
     public void RetryGame()
     {
-        CancelInvoke(); // 예약된 함수 취소
+        CancelInvoke();
 
-        score = 0;      // 점수 초기화
-        roundTime = 3f; // 제한 시간 초기화
-        gameOver = false; // 게임 상태를 다시 진행 가능으로 변경
-        UpdateScore();    // 점수 UI 갱신
+        score = 0;
+        roundTime = 3f; // 난이도 초기화
+        gameOver = false;
+        UpdateScore();
 
-        retryButton.gameObject.SetActive(false); // 다시하기 버튼 숨김
-        StartNewRound();                         // 새 라운드 시작
+        retryButton.gameObject.SetActive(false);
+        StartNewRound();
     }
 }
+*/
