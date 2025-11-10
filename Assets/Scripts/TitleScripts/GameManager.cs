@@ -7,8 +7,7 @@ using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour //참참참
 {
-    public enum Direction
-    {
+    public enum Direction {
         Left,
         Right
     }

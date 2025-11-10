@@ -1,18 +1,11 @@
-﻿using System.Collections.Generic;
-using System.Net.NetworkInformation;
-using TMPro;
-using Unity.VisualScripting;
+﻿using TMPro;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class InGameManager : MonoBehaviour
 {
-
-    #region 싱글톤 및 기타 (건들필요X)
-    ///////
+    #region 싱글톤 및 기타
     public static InGameManager Instance { get; private set; }
     public AnimationCurve scoreCurve;
-    ///////
     #endregion
 
     #region ★ 게임에 필요한 변수들
@@ -36,24 +29,23 @@ public class InGameManager : MonoBehaviour
     private int nowGame = 0;    // 현재 게임 (0 : 가위바위보, 1 : 참참참, 2 : 제로게임)
     private int nextGame = 1;   // 다음 게임 (0 : 가위바위보, 1 : 참참참, 2 : 제로게임)
 
-    private int playerHand = 0;
-    private int oppoentHand = 0;
+    private int playerHand = 0;  // 플레이어 손
+    private int oppoentHand = 0; // 상대 손
 
     // 최초 게임당 시간
     private const float MAXpartTime = 3.0f;
 
     // 각 게임당 시간
     public float partTime { get; private set; } = 3.0f;
-
+    // 미니게임 남은 시간 (최초 3초부터 점점 줄어듦)
     private float minigameTime = 3.0f;
     // 성공한 게임 수
     private int clearedGame = 0;
-
-    public static string missionString;
+    // 미션 텍스트
+    public static string missionString = "테스트";
     #endregion
 
     #region ★ 하이라키창에서 선택할 것들 (건들 필요X)
-
     [SerializeField]
     private TextMeshProUGUI survivalTime_Text;
     [SerializeField]
@@ -72,24 +64,17 @@ public class InGameManager : MonoBehaviour
     private TextMeshProUGUI missionText;
     [SerializeField]
     private RectTransform timeGauge;
-
     #endregion
 
     void Awake() {
         Instance = this;
     }
-    void Start() {
-    }
-
     void Update()
     {
-
-        // isGame이 false면 (게임 오버) 아무것도 하지 않음
         if (!isGame) return;
-
-        // 1. 시간 흐름 및 게임 오버 체크
+        
         timeTick();
-
+        
         // 2. 키보드 테스트 입력
         if (Input.GetKeyDown(KeyCode.A)) oppoentHandChange(0);
         if (Input.GetKeyDown(KeyCode.S)) oppoentHandChange(1);
@@ -99,199 +84,53 @@ public class InGameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.X)) playerHandChange(1);
         if (Input.GetKeyDown(KeyCode.C)) playerHandChange(2);
 
-        if (Input.GetKeyDown(KeyCode.Space)) gameClear();
-
+        if (Input.GetKeyDown(KeyCode.LeftAlt)) gameFail();
+        if (Input.GetKeyDown(KeyCode.LeftControl)) gameClear();
     }
 
-    /// <summary>
-    /// 미니게임의 제한시간을 get합니다.
-    /// </summary>
-    /// <returns> 미니게임의 제한 시간 </returns>
+    // 게임의 시간을 다루는 함수 (제한시간, 생존시간, 미니게임 시간 등)
+    private void timeTick() {
+        remainTime -= Time.deltaTime;               // 제한시간
+        survivalTime += Time.deltaTime;             // 생존시간
+        if (minigameTime >= 0.0f) minigameTime -= Time.deltaTime; // 미니게임 시간
 
-    /// <summary>
-    /// 미션이 애니메이션으로 나타납니다.
-    /// </summary>
-    public void MissionCall() {
-
-        missionText.text = missionString;
-
-        missionText.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
-
-        LeanTween.value(gameObject, 0f, 1f, 0.2f).
-        setOnUpdate((float val) => {
-                missionText.alpha = val;
-            });
-
-        LeanTween.scale(missionText.gameObject, new Vector3(1f, 1f, 1f), 0.1f).
-            setEase(LeanTweenType.easeOutBack);
-
-        LeanTween.value(gameObject, 2.5f, 0f, 1f).
-        setOnUpdate((float val) => {
-            missionText.alpha = val;
-        });
-
-    }
-
-    /// <summary>
-    /// 게임 시작 전
-    /// </summary>
-    public void opening() {
-        playerHand_effect.Play();
-        oppoentHand_effect.Play();
-    }
-
-    /// <summary>
-    /// 플레이어의 손을 바꿉니다
-    /// </summary>
-    public void playerHandChange(int val)
-    {
-
-        if (playerHand == val) return;
-
-        playerHand_effect.Clear();
-        Texture2D loadtexture_player = Resources.Load<Texture2D>("Hand/" + handList[val]);
-
-        var shapeModule_p = playerHand_effect.shape;
-        playerHand = val;
-        shapeModule_p.texture = loadtexture_player;
-
-        playerHand_effect.Emit(15000);
-
-        //// ★ 현재 게임이 "참참참"일 때만 승패를 판정합니다.
-        //if (nowGame == 1)
-        //{
-        //    // 1. 상대방의 손이 무엇인지 가져옵니다. (3:좌, 4:중, 5:우)
-        //    int oppoHand = checkOppoentHand();
-        //
-        //    // 2. "val" 값이 플레이어의 손입니다. (3:좌, 4:중, 5:우)
-        //    // 3. 1단계에서 저장해둔 미션(isFollowMission)을 확인합니다.
-        //
-        //    if (isFollowMission == true) // "따라하기" 미션일 때
-        //    {
-        //        if (val == oppoHand) gameClear(); // (성공) 따라했으면 승리!
-        //        else gameFail();                 // (실패) 못 따라했으면 패배!
-        //    }
-        //    else // "피하기" 미션일 때
-        //    {
-        //        if (val != oppoHand) gameClear(); // (성공) 피했으면 승리!
-        //        else gameFail();                 // (실패) 못 피했으면 패배!
-        //    }
-        //}
-    }
-
-    /// <summary>
-    /// 상대방의 손을 바꿉니다.
-    /// </summary>
-    public void oppoentHandChange(int val)
-    {
-        if (oppoentHand == val) return;
-        oppoentHand_effect.Clear();
-
-        Texture2D loadtexture_oppoent = Resources.Load<Texture2D>("Hand/" + handList[val]);
-
-        var shapeModule_o = oppoentHand_effect.shape;
-        oppoentHand = val;
-        shapeModule_o.texture = loadtexture_oppoent;
-
-        oppoentHand_effect.Emit(15000);
-    }
-
-    /// <summary>
-    /// 상대방의 손을 확인합니다.
-    /// </summary>
-    public int checkOppoentHand()
-    {
-        return oppoentHand;
-    }
-
-    public void GameStart() {
-
-        // 브금 재생
-        AudioManager.Instance.playSFX(1);
-        isGame = true;
-        MissionCall();
-    }
-
-    // 게임 성공 시
-    public void gameClear()
-    {
-        _Combo++;
-        clearedGame++;
-        addScore();
-        remainTime += (5.0f - (survivalTime / 20.0f));
-
-        pickGame();
-    }
-
-    // 게임 실패 시
-    public void gameFail()
-    {
-        // 1. 벌칙 적용
-        _Combo = 0;
-        remainTime -= 10.0f;
-
-        // 3. 다음 게임으로 넘김
-        pickGame();
-    }
-
-    // 게임 오버
-    private void GameOver()
-    {
-        // [중요] isGame을 false로 바꿔서 Update()가 더 이상 timeTick()을 실행하지 못하게 함
-        isGame = false;
-
-    }
-
-    // 점수를 증가시킵니다
-    private void addScore()
-    {
-
-        float multi = scoreCurve.Evaluate(survivalTime);
-        _Score += (int)((1000 * _Combo) * (multi));      // 기본 1000점 x 콤보 수 x 생존 시간 보너스(최대 3배)
-        score_Text.text = _Score.ToString("N0");
-
-    }
-
-    private void pickGame()
-    {
-
-        nowGame = nextGame;
-        nowGame_Text.text = gameList[nowGame];
-
-        int randInt = Random.Range(0, 3);
-        
-        nextGame = randInt;
-        nextGame_Text.text = gameList[randInt];
-
-        StartCoroutine(CountDown.Instance.CountDownStart(timeSet));
-    }
-
-    private void timeSet() {
-        minigameTime = partTime;
-    }
-
-    // 제한시간 감소 및 텍스트 변경
-    private void timeTick()
-    {
-        // 1. 시간 감소
-        remainTime -= Time.deltaTime;
-        survivalTime += Time.deltaTime;
-
-        if (minigameTime >= 0.0f) minigameTime -= Time.deltaTime;
-        partTime = MAXpartTime - (clearedGame / 10);
-        partTime = Mathf.Clamp(partTime, 0.5f, 3.0f);
+        // minigameTime을 정규화 시킨 후, 화면 아래의 시간게이지를 감소시킴
         float normalized = minigameTime / partTime;
         normalized = Mathf.Clamp01(normalized);
+
+        // 미니게임이 시작되면 화면 아래의 게이지가 줄어듦 (0이 되면 미니게임 성공여부 판정)
         timeGauge.sizeDelta = new Vector2(1920 * normalized, 30);
 
-        // 2. 시간이 0 이하로 내려갔는지 '스스로' 확인
-        if (remainTime <= 0.0f)
-        {
-            remainTime = 0.0f;
-            GameOver(); // 게임 오버 처리
+
+ 
+
+        ////////////////// ★★★★★ 이 아래 switch 부분을 작성해주세요 ★★★★★ //////////////////
+
+        // 미니게임 제한시간이 끝났을 떄
+        if (minigameTime <= 0.0f) {
+            // 현재 게임을 확인하고 각 게임 스크립트의 승리인지 패배인지를 여부를 불러옴
+            // 0 : 가위바위보, 1 : 참참참, 2 : 제로게임
+            switch (nowGame) {
+                case 0:
+                    // RSPClearOrFali();            -> 가위바위보 클리어 여부
+                    break;                          // 가위바위보.cs에서 이걸 불러오기
+                case 1:
+                    // ChamChamChamClearOrFali();   -> 참참참 클리어 여부
+                    break;                          // 참참참.cs에서 이걸 불러오기
+                case 2:
+                    // ZeroGameClearOrFali();       -> 제로게임 클리어 여부
+                    break;                          // 제로게임.cs에서 이걸 불러오기
+                default:
+                    break;
+            }
         }
 
-        // 3. (시간이 0보다 클 때만) 생존 시간 & 남은 시간 텍스트 업데이트
+        // 게임 제한시간이 끝났을 때
+        if (remainTime <= 0.0f) {
+            remainTime = 0.0f;
+            GameOver();
+        }
+
         int minutes = (int)(survivalTime / 60);
         int seconds = (int)(survivalTime % 60);
         survivalTime_Text.text = $"{minutes}:{seconds:00}";
@@ -300,4 +139,149 @@ public class InGameManager : MonoBehaviour
         else remainTime_Text.text = remainTime.ToString("F1");
     }
 
+
+
+
+
+
+
+    //////////////// PUBLIC 구간 ///////////////////
+    //// 아래의 함수는 다른 스크립트에서 호출 가능 ////
+    ////////////////////////////////////////////////
+
+
+    // 미니게임 성공 시, 함수를 호출 (본인의 스크립트에서 미니게임 성공 조건을 달성했다면 이걸 호출하세요)
+    public void gameClear() {
+        // AudioManager.Instance.playSFX(); // 클리어 효과음 재생예정
+        _Combo++;
+        clearedGame++;
+        remainTime += (5.0f - (survivalTime / 20.0f)); 
+        addScore();                                    
+        pickGame();                                    
+    }
+
+    // 미니게임 실패 시, 함수를 호출 (본인의 스크립트에서 미니게임이 실패했다면 이걸 호출하세요)
+    public void gameFail() {
+        // AudioManager.Instance.playSFX(); // 패배 효과음 재생예정
+        _Combo = 0;          
+        remainTime -= 10.0f; 
+        pickGame();          
+    }
+
+    // 매개변수 val 값으로 플레이어 손을 바꿈 (플레이어 손을 인식한 val값으로 바꾸세요)
+    public void playerHandChange(int val) {
+        if (playerHand == val) return;
+        playerHand_effect.Clear();
+        Texture2D loadTexture 
+            = Resources.Load<Texture2D>("Hand/" + handList[val]);
+
+        var shapeModule_p = playerHand_effect.shape;
+        playerHand = val;
+        shapeModule_p.texture = loadTexture;
+        playerHand_effect.Emit(15000);
+    }
+
+    // 매개변수 val 값으로 상대방의 손을 바꿈 (본인의 스크립트에서 상대의 손을 바꿨다면 이걸 호출하세요)
+    public void oppoentHandChange(int val) {
+        if (oppoentHand == val) return;
+        oppoentHand_effect.Clear();
+        Texture2D loadtexture_oppoent 
+            = Resources.Load<Texture2D>("Hand/" + handList[val]);
+
+        var shapeModule_o = oppoentHand_effect.shape;
+        oppoentHand = val;
+        shapeModule_o.texture = loadtexture_oppoent;
+        oppoentHand_effect.Emit(15000);
+    }
+
+    // 상대방의 손이 현재 무엇인지 확인함 (본인의 스크립트에서 상대의 손이 무엇인지 알고 싶다면 호출)
+    public int checkOppoentHand() {
+        return oppoentHand;
+    }
+
+    // 플레이어의 손이 현재 무엇인지 확인함 (본인의 스크립트에서 플레이어의 손이 무엇인지 알고 싶다면 호출)
+    public int checkPlayerHand() {
+        return playerHand;
+    }
+
+    // 미션 텍스트 출력 (이 함수를 사용하지 말고 IngameManager.Instance.missionString를 바꾸세요,
+    // missionString을 바꾼다면 바뀐 텍스트가 미니게임이 바뀔 때, 자동으로 뜹니다)
+    public void MissionCall() {
+
+        missionText.text = missionString;
+        missionText.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
+        LeanTween.value(gameObject, 0f, 1f, 0.2f).
+        setOnUpdate((float val) => {
+                missionText.alpha = val;
+            });
+        LeanTween.scale(missionText.gameObject, new Vector3(1f, 1f, 1f), 0.1f).
+            setEase(LeanTweenType.easeOutBack);
+        LeanTween.value(gameObject, 2.5f, 0f, 1f).
+        setOnUpdate((float val) => {
+            missionText.alpha = val;
+        });
+    }
+
+
+    //////////// 이 아래는 건들필요 없음 /////////////
+
+
+    // 처음에 손이 안 보이는데, 보이게 만들기
+    public void opening() {
+        playerHand_effect.Play();
+        oppoentHand_effect.Play();
+    }
+
+
+    // 게임 시작 시, 함수를 호출 (이미 사용됨, 재사용 ㄴ)
+    public void GameStart() {
+        AudioManager.Instance.playBGM(1);
+        isGame = true;
+        MissionCall();
+    }
+
+
+
+
+    //////////////// PRIVATE 구간 ///////////////////////////
+    //// 아래의 함수는 여기에서만 사용됨 (다른 스크립트는 X) ////
+    /////////////////////////////////////////////////////////
+
+    // 제한시간이 종료되어 게임오버됨
+    private void GameOver(){
+        isGame = false;
+        // AudioManager.Instance.playSFX(6); // 게임 실패 효과음
+        // AudioManager.Instance.playBGM(2); // 게임 실패 브금 
+        // 게임 패배 패널 띄우기
+    }
+
+    // 게임을 오래할 수록 점수가 증가됨
+    // 계산 : 기본 1000점 x 콤보 수 x 생존 시간(최대 3배)
+    private void addScore() {
+        float multi = scoreCurve.Evaluate(survivalTime);
+        _Score += (int)((1000 * _Combo) * (multi));      
+        score_Text.text = _Score.ToString("N0");
+    }
+
+    // 게임을 뽑고 텍스트를 바꿈
+    private void pickGame() {
+        nowGame = nextGame;
+        nowGame_Text.text = gameList[nowGame];
+
+        int randInt = Random.Range(0, 3);
+        nextGame = randInt;
+        nextGame_Text.text = gameList[randInt];
+        
+        // 게임 중간에 3, 2, 1 카운트다운
+        StartCoroutine(CountDown.Instance.CountDownStart(timeSet));
+    }
+
+    // 미니게임 시간을 partTime(미니게임 시간 설정값)으로 설정
+    private void timeSet() {
+        // partTime : 최초 3초로 시작하며, 0.5초까지 줄어드는 변수
+        // 게임 10개 클리어 시, 미니게임 시간이 1초 감소
+        partTime = MAXpartTime - (clearedGame / 10);
+        partTime = Mathf.Clamp(partTime, 0.5f, 3.0f); // partTime을 0.5 ~ 3초로 제한
+        minigameTime = partTime;
+    }
 }
