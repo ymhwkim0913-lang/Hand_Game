@@ -73,8 +73,6 @@ public class AudioManager : MonoBehaviour
         if (index >= 0 && index < bgmClips.Count) {
             AudioClip clip = bgmClips[index];
 
-            Debug.Log("출력");
-
             // 기존 BGM 중지 후 새 BGM 교체
             bgmSource.Stop();
             bgmSource.volume = 1f;

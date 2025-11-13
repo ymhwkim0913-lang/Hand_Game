@@ -66,27 +66,19 @@ public class InGameManager : MonoBehaviour
     private RectTransform timeGauge;
     #endregion
 
-    void Awake()
-    {
+    void Awake() {
         Instance = this;
     }
-    void Update()
-    {
+    void Update() 
+        {
         if (!isGame) return;
 
         timeTick();
 
-        // 2. 키보드 테스트 입력
-        if (Input.GetKeyDown(KeyCode.A)) oppoentHandChange(0);
-        if (Input.GetKeyDown(KeyCode.S)) oppoentHandChange(1);
-        if (Input.GetKeyDown(KeyCode.D)) oppoentHandChange(2);
-
+        // 플레이어 손 키보드로 구현
         if (Input.GetKeyDown(KeyCode.Z)) playerHandChange(0);
         if (Input.GetKeyDown(KeyCode.X)) playerHandChange(1);
         if (Input.GetKeyDown(KeyCode.C)) playerHandChange(2);
-
-        if (Input.GetKeyDown(KeyCode.LeftAlt)) gameFail();
-        if (Input.GetKeyDown(KeyCode.LeftControl)) gameClear();
     }
 
     private bool miniEnd = false;
@@ -114,15 +106,13 @@ public class InGameManager : MonoBehaviour
 
             miniEnd = true;
 
-            gameClear();
-
             // 현재 게임을 확인하고 각 게임 스크립트의 승리인지 패배인지를 여부를 불러옴
             // 0 : 가위바위보, 1 : 참참참, 2 : 제로게임
             switch (nowGame)
             {
                 case 0:
-                    RPS_Webcam_Controller.Instance.JudgeRPSResult();
-                    break;                          // 가위바위보.cs에서 이걸 불러오기
+                    RPS_Webcam_Controller.Instance.JudgeRPSResult(); // 가위바위보 패배, 승리 여부 판단
+                    break;                          
                 case 1:
                     missionString = "참참참 시작!";
                     // ChamChamChamClearOrFali();   -> 참참참 클리어 여부
@@ -161,10 +151,15 @@ public class InGameManager : MonoBehaviour
     //// 아래의 함수는 다른 스크립트에서 호출 가능 ////
     ////////////////////////////////////////////////
 
+    // 지금 게임 중?
+    public bool isGameStart() {
+        return isGame;
+    }
 
     // 미니게임 성공 시, 함수를 호출 (본인의 스크립트에서 미니게임 성공 조건을 달성했다면 이걸 호출하세요)
     public void gameClear()
     {
+        Debug.Log("출력");
         // AudioManager.Instance.playSFX(); // 클리어 효과음 재생예정
         _Combo++;
         clearedGame++;
@@ -185,6 +180,7 @@ public class InGameManager : MonoBehaviour
     // 매개변수 val 값으로 플레이어 손을 바꿈 (플레이어 손을 인식한 val값으로 바꾸세요)
     public void playerHandChange(int val)
     {
+        if (isGame == false) return;
         if (playerHand == val) return;
         playerHand_effect.Clear();
         Texture2D loadTexture
@@ -199,6 +195,7 @@ public class InGameManager : MonoBehaviour
     // 매개변수 val 값으로 상대방의 손을 바꿈 (본인의 스크립트에서 상대의 손을 바꿨다면 이걸 호출하세요)
     public void oppoentHandChange(int val)
     {
+        if (isGame == false) return;
         if (oppoentHand == val) return;
         oppoentHand_effect.Clear();
         Texture2D loadtexture_oppoent
@@ -291,10 +288,17 @@ public class InGameManager : MonoBehaviour
 
         nowGame = nextGame;
         nowGame_Text.text = gameList[nowGame];
-
+        
         int randInt = Random.Range(0, 3);
         nextGame = randInt;
         nextGame_Text.text = gameList[randInt];
+
+        /// 가위바위보만 등장하게 바꿉니다 ///
+        /// 
+        // nowGame = 0;
+        // nextGame = 0;
+        // nowGame_Text.text = gameList[nowGame];
+        // nextGame_Text.text = gameList[nextGame];
 
         // 게임 중간에 3, 2, 1 카운트다운
         StartCoroutine(CountDown.Instance.CountDownStart(timeSet));

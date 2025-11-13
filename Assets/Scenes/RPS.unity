@@ -365,7 +365,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 535ce42354e33d341be78716a8051e14, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inGameManager: {fileID: 237538184}
   instructionText: {fileID: 925587367}
   nowGame_Text_Reference: {fileID: 241665233}
 --- !u!1 &241665231

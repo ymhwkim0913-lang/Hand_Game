@@ -16,9 +16,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
     public static RPS_Webcam_Controller Instance { get; private set; }
     // ▲▲▲ [추가] ▲▲▲
 
-    [Header("관리자 연결")]
-    [SerializeField] private InGameManager inGameManager;
-
     [Header("UI (미션 표시용)")]
     [SerializeField] private TextMeshProUGUI instructionText; // (InGameManager의 missionText를 사용하므로 이 변수는 이제 사용 안 함)
 
@@ -42,7 +39,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
 
     private bool isMissionActive = false; // "가위바위보" 미션이 설정되었는지 확인용
 
-
     // --- UDP 네트워크 수신 관련 변수 ---
     private Thread receiveThread;
     private UdpClient client;
@@ -56,29 +52,13 @@ public class RPS_Webcam_Controller : MonoBehaviour
     private readonly object queueLock = new object();
 
     // ▼▼▼ [추가] 싱글톤 인스턴스 설정 ▼▼▼
-    void Awake()
-    {
+    void Awake() {
         Instance = this;
     }
     // ▲▲▲ [추가] ▲▲▲
 
     void Start()
     {
-        // 1. InGameManager를 찾습니다.
-        if (inGameManager == null) inGameManager = FindObjectOfType<InGameManager>();
-
-        // 2. [중요!] InGameManager의 GameStart()를 호출해서 isGame=true로 만듭니다.
-        if (inGameManager != null)
-        {
-            // InGameManager 담당자가 GameStart()의 AudioManager 코드를 주석처리해야 합니다.
-            inGameManager.GameStart();
-        }
-        else
-        {
-            Debug.LogError("RPS_Webcam_Controller: InGameManager를 찾을 수 없습니다!");
-            return;
-        }
-
         if (nowGame_Text_Reference == null)
         {
             Debug.LogError("RPS_Webcam_Controller: 'Now Game Text Reference'가 연결되지 않았습니다!");
@@ -143,8 +123,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
                     }
                 }
             }
-            catch (Exception err)
-            {
+            catch (Exception err) {
                 Debug.LogError(err.ToString());
             }
         }
@@ -167,7 +146,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
     private void ProcessHandData(int playerVal)
     {
         // (수정) InGameManager의 playerHandChange 함수를 호출
-        inGameManager.playerHandChange(playerVal);
+        InGameManager.Instance.playerHandChange(playerVal);
     }
     #endregion
 
@@ -175,13 +154,13 @@ public class RPS_Webcam_Controller : MonoBehaviour
     /// <summary>
     /// 새 가위바위보 미션 "설정" (타이머 시작 X)
     /// </summary>
-    private void StartNewRPSMission()
+    public void StartNewRPSMission()
     {
         lastPlayerHandVal = HAND_NONE; // 플레이어 손 초기화
 
         // 1. 상대방 손 랜덤 설정
         int opponentHand = UnityEngine.Random.Range(0, 3);
-        inGameManager.oppoentHandChange(opponentHand);
+        InGameManager.Instance.oppoentHandChange(opponentHand);
 
         // 2. 미션 랜덤 설정
         currentMission = (Mission)UnityEngine.Random.Range(0, 3);
@@ -189,8 +168,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
         // 3. InGameManager가 사용할 미션 텍스트를 static 변수에 저장
         InGameManager.missionString = GetMissionString(currentMission, opponentHand);
 
-        // 4. InGameManager의 미션 애니메이션 호출
-        inGameManager.MissionCall();
     }
 
 
@@ -207,7 +184,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
         isMissionActive = false;
 
         // 2. 타이머가 끝난 시점의 플레이어 마지막 손 모양을 가져옴
-        int finalPlayerHand = inGameManager.checkPlayerHand(); // InGameManager의 변수를 직접 체크
+        int finalPlayerHand = InGameManager.Instance.checkPlayerHand(); // InGameManager의 변수를 직접 체크
         // int finalPlayerHand = lastPlayerHandVal; // (이전 방식)
 
         // 3. 승패 판정
@@ -216,11 +193,11 @@ public class RPS_Webcam_Controller : MonoBehaviour
         // 4. InGameManager의 함수 호출
         if (success)
         {
-            inGameManager.gameClear();
+            InGameManager.Instance.gameClear();
         }
         else
         {
-            inGameManager.gameFail();
+            InGameManager.Instance.gameFail();
         }
 
         // 5. isMissionActive는 InGameManager의 pickGame()이 호출된 후,
@@ -233,7 +210,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
     /// </summary>
     private bool PerformRPSCheck(int playerVal)
     {
-        int opponentVal = inGameManager.checkOppoentHand();
+        int opponentVal = InGameManager.Instance.checkOppoentHand();
         bool success = false;
         switch (currentMission)
         {
