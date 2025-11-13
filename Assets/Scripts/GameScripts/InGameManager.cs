@@ -42,7 +42,7 @@ public class InGameManager : MonoBehaviour
     // 성공한 게임 수
     private int clearedGame = 0;
     // 미션 텍스트
-    public static string missionString = "테스트";
+    public static string missionString = "가위바위보 시작!";
     #endregion
 
     #region ★ 하이라키창에서 선택할 것들 (건들 필요X)
@@ -89,6 +89,7 @@ public class InGameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.LeftControl)) gameClear();
     }
 
+    private bool miniEnd = false;
     // 게임의 시간을 다루는 함수 (제한시간, 생존시간, 미니게임 시간 등)
     private void timeTick()
     {
@@ -109,8 +110,12 @@ public class InGameManager : MonoBehaviour
         ////////////////// ★★★★★ 이 아래 switch 부분을 작성해주세요 ★★★★★ //////////////////
 
         // 미니게임 제한시간이 끝났을 떄
-        if (minigameTime <= 0.0f)
-        {
+        if (minigameTime <= 0.0f && miniEnd == false) {
+
+            miniEnd = true;
+
+            gameClear();
+
             // 현재 게임을 확인하고 각 게임 스크립트의 승리인지 패배인지를 여부를 불러옴
             // 0 : 가위바위보, 1 : 참참참, 2 : 제로게임
             switch (nowGame)
@@ -119,9 +124,11 @@ public class InGameManager : MonoBehaviour
                     RPS_Webcam_Controller.Instance.JudgeRPSResult();
                     break;                          // 가위바위보.cs에서 이걸 불러오기
                 case 1:
+                    missionString = "참참참 시작!";
                     // ChamChamChamClearOrFali();   -> 참참참 클리어 여부
                     break;                          // 참참참.cs에서 이걸 불러오기
                 case 2:
+                    missionString = "제로게임 시작!";
                     // ZeroGameClearOrFali();       -> 제로게임 클리어 여부
                     break;                          // 제로게임.cs에서 이걸 불러오기
                 default:
@@ -280,8 +287,8 @@ public class InGameManager : MonoBehaviour
     }
 
     // 게임을 뽑고 텍스트를 바꿈
-    private void pickGame()
-    {
+    private void pickGame() {
+
         nowGame = nextGame;
         nowGame_Text.text = gameList[nowGame];
 
@@ -291,6 +298,7 @@ public class InGameManager : MonoBehaviour
 
         // 게임 중간에 3, 2, 1 카운트다운
         StartCoroutine(CountDown.Instance.CountDownStart(timeSet));
+
     }
 
     // 미니게임 시간을 partTime(미니게임 시간 설정값)으로 설정
@@ -301,5 +309,6 @@ public class InGameManager : MonoBehaviour
         partTime = MAXpartTime - (clearedGame / 10);
         partTime = Mathf.Clamp(partTime, 0.5f, 3.0f); // partTime을 0.5 ~ 3초로 제한
         minigameTime = partTime;
+        miniEnd = false;
     }
 }

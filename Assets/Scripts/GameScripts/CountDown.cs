@@ -81,8 +81,8 @@ public class CountDown : MonoBehaviour
         countdownText.gameObject.SetActive(false);
 
         AudioManager.Instance.playSFX(5);
-        InGameManager.Instance.MissionCall();
         action();
+        InGameManager.Instance.MissionCall();
     }
 
     // 카운트다운 (3, 2, 1) 애니메이션
