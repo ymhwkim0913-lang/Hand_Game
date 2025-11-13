@@ -12,8 +12,15 @@ using System.Threading;
 
 public class RPS_Webcam_Controller : MonoBehaviour
 {
+    // ▼▼▼ [추가] InGameManager가 이 스크립트를 찾을 수 있도록 싱글톤 인스턴스 추가 ▼▼▼
+    public static RPS_Webcam_Controller Instance { get; private set; }
+    // ▲▲▲ [추가] ▲▲▲
+
+    [Header("관리자 연결")]
+    [SerializeField] private InGameManager inGameManager;
+
     [Header("UI (미션 표시용)")]
-    [SerializeField] private TextMeshProUGUI instructionText;
+    [SerializeField] private TextMeshProUGUI instructionText; // (InGameManager의 missionText를 사용하므로 이 변수는 이제 사용 안 함)
 
     [Header("게임 상태 참조용")]
     [SerializeField] private TextMeshProUGUI nowGame_Text_Reference;
@@ -28,13 +35,12 @@ public class RPS_Webcam_Controller : MonoBehaviour
     private enum Mission { Tie, Win, Lose }
     private Mission currentMission;
 
-    [Header("가위바위보 난이도 설정")]
-    [SerializeField] private float rpsTimeLimit = 30.0f; // 현재 제한 시간 (시작 값)
-    [SerializeField] private float rpsMinTimeLimit = 0.5f; // 최소 제한 시간 (여기까지 어려워짐)
-    [SerializeField] private float rpsTimeDecrement = 0.1f; // 성공 시 단축되는 시간
+    // [삭제] InGameManager가 타이머를 제어하므로 이 스크립트의 타이머는 필요 없음
+    // [Header("가위바위보 난이도 설정")]
+    // [SerializeField] private float rpsTimeLimit = 3.0f;
+    // [삭제] private Coroutine rpsTimerCoroutine; 
 
-    private Coroutine rpsTimerCoroutine; // 미션 타이머 코루틴
-    private bool isMissionActive = false; // 현재 미션이 진행 중인지 (중복 판정 방지)
+    private bool isMissionActive = false; // "가위바위보" 미션이 설정되었는지 확인용
 
 
     // --- UDP 네트워크 수신 관련 변수 ---
@@ -42,18 +48,37 @@ public class RPS_Webcam_Controller : MonoBehaviour
     private UdpClient client;
     private int port = 12345;
 
-    // ▼▼▼ [로직 변경] '마지막으로 낸 손'을 저장하는 변수로 사용 ▼▼▼
     private int lastPlayerHandVal = HAND_NONE;
-    // ▲▲▲ [로직 변경] ▲▲▲
 
     // 메인 스레드와 네트워크 스레드 간의 데이터 공유를 위한 큐(Queue)
     private Queue<int> handDataQueue = new Queue<int>();
     // 큐 접근을 동기화하기 위한 잠금(lock) 객체
     private readonly object queueLock = new object();
 
+    // ▼▼▼ [추가] 싱글톤 인스턴스 설정 ▼▼▼
+    void Awake()
+    {
+        Instance = this;
+    }
+    // ▲▲▲ [추가] ▲▲▲
 
     void Start()
     {
+        // 1. InGameManager를 찾습니다.
+        if (inGameManager == null) inGameManager = FindObjectOfType<InGameManager>();
+
+        // 2. [중요!] InGameManager의 GameStart()를 호출해서 isGame=true로 만듭니다.
+        if (inGameManager != null)
+        {
+            // InGameManager 담당자가 GameStart()의 AudioManager 코드를 주석처리해야 합니다.
+            inGameManager.GameStart();
+        }
+        else
+        {
+            Debug.LogError("RPS_Webcam_Controller: InGameManager를 찾을 수 없습니다!");
+            return;
+        }
+
         if (nowGame_Text_Reference == null)
         {
             Debug.LogError("RPS_Webcam_Controller: 'Now Game Text Reference'가 연결되지 않았습니다!");
@@ -67,8 +92,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
         receiveThread = new Thread(new ThreadStart(ReceiveData));
         receiveThread.IsBackground = true;
         receiveThread.Start();
-
-
     }
 
     void Update()
@@ -81,29 +104,21 @@ public class RPS_Webcam_Controller : MonoBehaviour
         // 2. 현재 게임이 "가위바위보"인지 확인
         if (nowGame_Text_Reference.text == "가위바위보")
         {
-            // 3. "가위바위보" 게임인데, 아직 미션이 시작되지 않았다면 (최초 1회 실행)
+            // 3. "가위바위보" 게임인데, 아직 미션이 설정되지 않았다면 (최초 1회 실행)
             if (!isMissionActive)
             {
-                isMissionActive = true; // 미션이 시작됨을 표시 (중복 시작 방지)
-                StartNewRPSMission();   // 새 미션 및 타이머 시작
+                isMissionActive = true;
+                StartNewRPSMission(); // 미션 설정 (타이머 X)
             }
         }
         else
         {
             // 4. "가위바위보"가 아니라면 (예: 참참참)
-            // 모든 미션 상태를 리셋하고, 혹시나 실행 중인 타이머가 있다면 중지
             isMissionActive = false;
-            if (rpsTimerCoroutine != null)
-            {
-                StopCoroutine(rpsTimerCoroutine);
-                rpsTimerCoroutine = null;
-            }
         }
     }
 
-    /// <summary>
-    /// (네트워크 스레드) Python에서 보낸 데이터를 큐에 넣기
-    /// </summary>
+    #region (수정 불필요) 네트워크 및 손 모양 처리
     private void ReceiveData()
     {
         client = new UdpClient(port);
@@ -114,19 +129,12 @@ public class RPS_Webcam_Controller : MonoBehaviour
                 IPEndPoint anyIP = new IPEndPoint(IPAddress.Any, 0);
                 byte[] data = client.Receive(ref anyIP);
                 string text = Encoding.UTF8.GetString(data);
-
-                Debug.Log($"[RPS_Webcam] Received text: '{text}'");
                 int detectedHandVal = int.Parse(text.Trim());
 
-                // ▼▼▼ [로직 변경] 큐에 넣기 전에 lastPlayerHandVal을 업데이트 ▼▼▼
-                // (큐가 처리되기 전에 타이머가 끝나도 마지막 손 모양을 기억하기 위함)
-
-                // 지금 손 모양이 이전과 다를 때만 업데이트
                 if (detectedHandVal != lastPlayerHandVal)
                 {
                     lastPlayerHandVal = detectedHandVal;
-
-                    if (isMissionActive)
+                    if (isMissionActive) // "가위바위보" 게임일 때만 큐에 넣음
                     {
                         lock (queueLock)
                         {
@@ -134,7 +142,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
                         }
                     }
                 }
-                // ▲▲▲ [로직 변경] ▲▲▲
             }
             catch (Exception err)
             {
@@ -142,10 +149,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
             }
         }
     }
-
-    /// <summary>
-    /// (메인 스레드) 큐에서 데이터를 꺼내 게임 로직 처리
-    /// </summary>
     private void ProcessQueue()
     {
         while (handDataQueue.Count > 0)
@@ -155,108 +158,82 @@ public class RPS_Webcam_Controller : MonoBehaviour
             {
                 handVal = handDataQueue.Dequeue();
             }
-
-            // 큐에서 꺼냈을 때도 여전히 미션이 활성 상태인지 재확인
             if (isMissionActive)
             {
                 ProcessHandData(handVal);
             }
         }
     }
-
-    // ▼▼▼▼▼ [로직 대폭 수정] ▼▼▼▼▼
-
-    /// <summary>
-    /// (메인 스레드) 인식된 손 모양을 InGameManager에 전달 (화면 업데이트용)
-    /// [승패 판정 로직 삭제됨]
-    /// </summary>
     private void ProcessHandData(int playerVal)
     {
-        // 1. 플레이어 손 모양을 화면에 즉시 표시 (요구사항: 플레이어가 바꿀 수 있게)
-        InGameManager.Instance.playerHandChange(playerVal);
-
-        // 2. (중요) 여기서 더 이상 승패 판정을 하지 않습니다.
-        //    판정은 RPSMissionTimer 코루틴이 타이머 종료 시 1회만 수행합니다.
+        // (수정) InGameManager의 playerHandChange 함수를 호출
+        inGameManager.playerHandChange(playerVal);
     }
+    #endregion
+
 
     /// <summary>
-    /// 새 가위바위보 미션 시작 (컴퓨터 손 표시, 타이머 시작)
+    /// 새 가위바위보 미션 "설정" (타이머 시작 X)
     /// </summary>
     private void StartNewRPSMission()
     {
-        lastPlayerHandVal = HAND_NONE; // 플레이어의 마지막 손 모양을 '없음'으로 초기화
+        lastPlayerHandVal = HAND_NONE; // 플레이어 손 초기화
 
-        // 1. 컴퓨터가 낼 손(opponentHand)과 미션(currentMission)을 랜덤으로 결정
+        // 1. 상대방 손 랜덤 설정
         int opponentHand = UnityEngine.Random.Range(0, 3);
-        InGameManager.Instance.oppoentHandChange(opponentHand); // 컴퓨터 손 모양 화면에 표시
+        inGameManager.oppoentHandChange(opponentHand);
 
+        // 2. 미션 랜덤 설정
         currentMission = (Mission)UnityEngine.Random.Range(0, 3);
-        instructionText.text = GetMissionString(currentMission, opponentHand); // 미션 텍스트 표시
 
-        // 2. [중요] 제한 시간 타이머(코루틴) 시작
-        // rpsTimeLimit (예: 3초) 후에 자동으로 '판정'을 시작
-        rpsTimerCoroutine = StartCoroutine(RPSMissionTimer());
+        // 3. InGameManager가 사용할 미션 텍스트를 static 변수에 저장
+        InGameManager.missionString = GetMissionString(currentMission, opponentHand);
+
+        // 4. InGameManager의 미션 애니메이션 호출
+        inGameManager.MissionCall();
     }
 
+
+    // ▼▼▼ [수정됨] 중복 호출 방지 로직 추가 ▼▼▼
     /// <summary>
-    /// [코루틴] 정해진 시간(rpsTimeLimit)이 지나면 "최종 판정" 수행
+    /// InGameManager의 타이머가 0이 됐을 때 호출될 판정 함수
     /// </summary>
-    private IEnumerator RPSMissionTimer()
+    public void JudgeRPSResult()
     {
-        // 1. 현재 설정된 제한 시간 (예: 3초) 만큼 기다림
-        yield return new WaitForSeconds(rpsTimeLimit);
+        // [중요!] "가위바위보" 미션이 활성화된 상태일 때(아직 판정 안 했을 때)만 판정
+        if (!isMissionActive) return;
 
-        // 2. [판정 시간] 이 코드가 실행될 때 (3초가 지났을 때)
-        //    'lastPlayerHandVal'에 저장된 플레이어의 '마지막 손 모양'을 가져옴
-        int finalPlayerHand = lastPlayerHandVal;
+        // 1. 판정 시작! (중복 판정 방지를 위해 즉시 false로 바꿈)
+        isMissionActive = false;
 
+        // 2. 타이머가 끝난 시점의 플레이어 마지막 손 모양을 가져옴
+        int finalPlayerHand = inGameManager.checkPlayerHand(); // InGameManager의 변수를 직접 체크
+        // int finalPlayerHand = lastPlayerHandVal; // (이전 방식)
+
+        // 3. 승패 판정
         bool success = PerformRPSCheck(finalPlayerHand);
 
-        // 3. [성공] 미션을 성공했다면
+        // 4. InGameManager의 함수 호출
         if (success)
         {
-            // 리워드 (시간 증가, 점수/콤보 획득)
-            InGameManager.Instance.gameClear();  
-            // 난이도 상승 (제한 시간 0.1초 감소)
-            DecreaseTimeLimit();
+            inGameManager.gameClear();
         }
-        // 4. [실패] 미션을 실패했다면 (시간이 초과됐거나, 손 모양이 틀렸거나)
         else
         {
-            // 벌칙 (시간 감소, 콤보 리셋)
-            InGameManager.Instance.gameFail();
+            inGameManager.gameFail();
         }
 
-        // 5. 미션 종료
-        isMissionActive = false;
-        rpsTimerCoroutine = null;
+        // 5. isMissionActive는 InGameManager의 pickGame()이 호출된 후,
+        //    Update()에서 "가위바위보"가 다시 걸리면 true로 바뀔 것임.
     }
-
-    /// <summary>
-    /// 미션 성공 시 난이도 상승 (제한 시간 감소)
-    /// </summary>
-    private void DecreaseTimeLimit()
-    {
-        // 현재 제한 시간이 최소 시간(0.5초)보다 클 때만
-        if (rpsTimeLimit > rpsMinTimeLimit)
-        {
-            rpsTimeLimit -= rpsTimeDecrement; // 0.1초 감소
-
-            // 0.1초를 뺐는데 최소 시간보다 작아졌으면, 최소 시간으로 고정
-            if (rpsTimeLimit < rpsMinTimeLimit)
-            {
-                rpsTimeLimit = rpsMinTimeLimit;
-            }
-        }
-    }
+    // ▲▲▲ [수정됨] ▲▲▲
 
     /// <summary>
     /// 현재 플레이어 손(playerVal)이 미션을 성공했는지 여부(true/false)만 반환
     /// </summary>
     private bool PerformRPSCheck(int playerVal)
     {
-        // [중요] checkOppoentHand()는 판정하는 '순간'에 호출해야 함
-        int opponentVal = InGameManager.Instance.checkOppoentHand();
+        int opponentVal = inGameManager.checkOppoentHand();
         bool success = false;
         switch (currentMission)
         {
@@ -276,8 +253,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
         }
         return success;
     }
-
-    // ▲▲▲▲▲ [로직 대폭 수정] ▲▲▲▲▲
 
 
     void OnApplicationQuit()
@@ -302,7 +277,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
     }
 
     /// <summary>
-    /// 미션 텍스트를 "이겨라!", "비겨라!", "져라!"만 반환하도록 수정
+    /// 미션 텍스트를 "이겨라!", "비겨라!", "져라!"만 반환
     /// </summary>
     private string GetMissionString(Mission mission, int oppoHand)
     {

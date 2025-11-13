@@ -66,15 +66,16 @@ public class InGameManager : MonoBehaviour
     private RectTransform timeGauge;
     #endregion
 
-    void Awake() {
+    void Awake()
+    {
         Instance = this;
     }
     void Update()
     {
         if (!isGame) return;
-        
+
         timeTick();
-        
+
         // 2. 키보드 테스트 입력
         if (Input.GetKeyDown(KeyCode.A)) oppoentHandChange(0);
         if (Input.GetKeyDown(KeyCode.S)) oppoentHandChange(1);
@@ -89,7 +90,8 @@ public class InGameManager : MonoBehaviour
     }
 
     // 게임의 시간을 다루는 함수 (제한시간, 생존시간, 미니게임 시간 등)
-    private void timeTick() {
+    private void timeTick()
+    {
         remainTime -= Time.deltaTime;               // 제한시간
         survivalTime += Time.deltaTime;             // 생존시간
         if (minigameTime >= 0.0f) minigameTime -= Time.deltaTime; // 미니게임 시간
@@ -102,17 +104,19 @@ public class InGameManager : MonoBehaviour
         timeGauge.sizeDelta = new Vector2(1920 * normalized, 30);
 
 
- 
+
 
         ////////////////// ★★★★★ 이 아래 switch 부분을 작성해주세요 ★★★★★ //////////////////
 
         // 미니게임 제한시간이 끝났을 떄
-        if (minigameTime <= 0.0f) {
+        if (minigameTime <= 0.0f)
+        {
             // 현재 게임을 확인하고 각 게임 스크립트의 승리인지 패배인지를 여부를 불러옴
             // 0 : 가위바위보, 1 : 참참참, 2 : 제로게임
-            switch (nowGame) {
+            switch (nowGame)
+            {
                 case 0:
-                    // RSPClearOrFali();            -> 가위바위보 클리어 여부
+                    RPS_Webcam_Controller.Instance.JudgeRPSResult();
                     break;                          // 가위바위보.cs에서 이걸 불러오기
                 case 1:
                     // ChamChamChamClearOrFali();   -> 참참참 클리어 여부
@@ -126,7 +130,8 @@ public class InGameManager : MonoBehaviour
         }
 
         // 게임 제한시간이 끝났을 때
-        if (remainTime <= 0.0f) {
+        if (remainTime <= 0.0f)
+        {
             remainTime = 0.0f;
             GameOver();
         }
@@ -151,28 +156,31 @@ public class InGameManager : MonoBehaviour
 
 
     // 미니게임 성공 시, 함수를 호출 (본인의 스크립트에서 미니게임 성공 조건을 달성했다면 이걸 호출하세요)
-    public void gameClear() {
+    public void gameClear()
+    {
         // AudioManager.Instance.playSFX(); // 클리어 효과음 재생예정
         _Combo++;
         clearedGame++;
-        remainTime += (5.0f - (survivalTime / 20.0f)); 
-        addScore();                                    
-        pickGame();                                    
+        remainTime += (5.0f - (survivalTime / 20.0f));
+        addScore();
+        pickGame();
     }
 
     // 미니게임 실패 시, 함수를 호출 (본인의 스크립트에서 미니게임이 실패했다면 이걸 호출하세요)
-    public void gameFail() {
+    public void gameFail()
+    {
         // AudioManager.Instance.playSFX(); // 패배 효과음 재생예정
-        _Combo = 0;          
-        remainTime -= 10.0f; 
-        pickGame();          
+        _Combo = 0;
+        remainTime -= 10.0f;
+        pickGame();
     }
 
     // 매개변수 val 값으로 플레이어 손을 바꿈 (플레이어 손을 인식한 val값으로 바꾸세요)
-    public void playerHandChange(int val) {
+    public void playerHandChange(int val)
+    {
         if (playerHand == val) return;
         playerHand_effect.Clear();
-        Texture2D loadTexture 
+        Texture2D loadTexture
             = Resources.Load<Texture2D>("Hand/" + handList[val]);
 
         var shapeModule_p = playerHand_effect.shape;
@@ -182,10 +190,11 @@ public class InGameManager : MonoBehaviour
     }
 
     // 매개변수 val 값으로 상대방의 손을 바꿈 (본인의 스크립트에서 상대의 손을 바꿨다면 이걸 호출하세요)
-    public void oppoentHandChange(int val) {
+    public void oppoentHandChange(int val)
+    {
         if (oppoentHand == val) return;
         oppoentHand_effect.Clear();
-        Texture2D loadtexture_oppoent 
+        Texture2D loadtexture_oppoent
             = Resources.Load<Texture2D>("Hand/" + handList[val]);
 
         var shapeModule_o = oppoentHand_effect.shape;
@@ -195,25 +204,28 @@ public class InGameManager : MonoBehaviour
     }
 
     // 상대방의 손이 현재 무엇인지 확인함 (본인의 스크립트에서 상대의 손이 무엇인지 알고 싶다면 호출)
-    public int checkOppoentHand() {
+    public int checkOppoentHand()
+    {
         return oppoentHand;
     }
 
     // 플레이어의 손이 현재 무엇인지 확인함 (본인의 스크립트에서 플레이어의 손이 무엇인지 알고 싶다면 호출)
-    public int checkPlayerHand() {
+    public int checkPlayerHand()
+    {
         return playerHand;
     }
 
     // 미션 텍스트 출력 (이 함수를 사용하지 말고 IngameManager.Instance.missionString를 바꾸세요,
     // missionString을 바꾼다면 바뀐 텍스트가 미니게임이 바뀔 때, 자동으로 뜹니다)
-    public void MissionCall() {
+    public void MissionCall()
+    {
 
         missionText.text = missionString;
         missionText.transform.localScale = new Vector3(2.5f, 2.5f, 1f);
         LeanTween.value(gameObject, 0f, 1f, 0.2f).
         setOnUpdate((float val) => {
-                missionText.alpha = val;
-            });
+            missionText.alpha = val;
+        });
         LeanTween.scale(missionText.gameObject, new Vector3(1f, 1f, 1f), 0.1f).
             setEase(LeanTweenType.easeOutBack);
         LeanTween.value(gameObject, 2.5f, 0f, 1f).
@@ -227,14 +239,16 @@ public class InGameManager : MonoBehaviour
 
 
     // 처음에 손이 안 보이는데, 보이게 만들기
-    public void opening() {
+    public void opening()
+    {
         playerHand_effect.Play();
         oppoentHand_effect.Play();
     }
 
 
     // 게임 시작 시, 함수를 호출 (이미 사용됨, 재사용 ㄴ)
-    public void GameStart() {
+    public void GameStart()
+    {
         AudioManager.Instance.playBGM(1);
         isGame = true;
         MissionCall();
@@ -248,7 +262,8 @@ public class InGameManager : MonoBehaviour
     /////////////////////////////////////////////////////////
 
     // 제한시간이 종료되어 게임오버됨
-    private void GameOver(){
+    private void GameOver()
+    {
         isGame = false;
         // AudioManager.Instance.playSFX(6); // 게임 실패 효과음
         // AudioManager.Instance.playBGM(2); // 게임 실패 브금 
@@ -257,27 +272,30 @@ public class InGameManager : MonoBehaviour
 
     // 게임을 오래할 수록 점수가 증가됨
     // 계산 : 기본 1000점 x 콤보 수 x 생존 시간(최대 3배)
-    private void addScore() {
+    private void addScore()
+    {
         float multi = scoreCurve.Evaluate(survivalTime);
-        _Score += (int)((1000 * _Combo) * (multi));      
+        _Score += (int)((1000 * _Combo) * (multi));
         score_Text.text = _Score.ToString("N0");
     }
 
     // 게임을 뽑고 텍스트를 바꿈
-    private void pickGame() {
+    private void pickGame()
+    {
         nowGame = nextGame;
         nowGame_Text.text = gameList[nowGame];
 
         int randInt = Random.Range(0, 3);
         nextGame = randInt;
         nextGame_Text.text = gameList[randInt];
-        
+
         // 게임 중간에 3, 2, 1 카운트다운
         StartCoroutine(CountDown.Instance.CountDownStart(timeSet));
     }
 
     // 미니게임 시간을 partTime(미니게임 시간 설정값)으로 설정
-    private void timeSet() {
+    private void timeSet()
+    {
         // partTime : 최초 3초로 시작하며, 0.5초까지 줄어드는 변수
         // 게임 10개 클리어 시, 미니게임 시간이 1초 감소
         partTime = MAXpartTime - (clearedGame / 10);

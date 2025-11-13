@@ -48,7 +48,7 @@ public class ButtonManager : MonoBehaviour
     // 진짜 게임시작 버튼
     public void GAMESTART(Animator ani) {
         ani.Rebind(); // 게임 Scene 이동 애니메이션
-        SceneManager.LoadScene("GameScene");
+        SceneManager.LoadScene("RPS");
     }
 
 }
