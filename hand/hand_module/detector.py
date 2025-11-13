@@ -1,4 +1,4 @@
-# detector.py
+# detector.py (수정 버전)
 import cv2
 import mediapipe as mp
 
@@ -15,9 +15,12 @@ class HandDetector:
 
     def get_landmarks(self, frame):
         """
-        frame: OpenCV frame (BGR)
-        return: list of hand landmark objects or empty list
+        return: list of Mediapipe LandmarkList (0~2개)
         """
         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(image_rgb)
-        return results.multi_hand_landmarks if results.multi_hand_landmarks else []
+
+        if results.multi_hand_landmarks:
+            return list(results.multi_hand_landmarks)  # 항상 리스트
+        else:
+            return []
