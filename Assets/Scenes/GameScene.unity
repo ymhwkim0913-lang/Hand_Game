@@ -2172,7 +2172,7 @@ ParticleSystem:
     radiusThickness: 1
     donutRadius: 0.2
     m_Position: {x: 0, y: 0, z: 0}
-    m_Rotation: {x: 90, y: 15, z: 0}
+    m_Rotation: {x: 90, y: 5, z: 0}
     m_Scale: {x: 1.58, y: 1, z: 1}
     placementMode: 0
     m_MeshMaterialIndex: 0
@@ -2241,7 +2241,7 @@ ParticleSystem:
     m_UseMeshMaterialIndex: 0
     m_UseMeshColors: 1
     alignToDirection: 0
-    m_Texture: {fileID: 2800000, guid: 170fa5e916b6d2a49b7c474fe8a5b98e, type: 3}
+    m_Texture: {fileID: 2800000, guid: 2e8564570ce1a7c4fb42cee97d53fe5b, type: 3}
     m_TextureClipChannel: 3
     m_TextureClipThreshold: 0.9999999
     m_TextureUVChannel: 0
@@ -6261,7 +6261,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 778547151}
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0.7071068, w: 0}
-  m_LocalPosition: {x: -964, y: -537.57, z: 0}
+  m_LocalPosition: {x: -964.9, y: -537.57, z: 0}
   m_LocalScale: {x: 5.7800016, y: 5.779997, z: 5.779997}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -6439,7 +6439,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 984.8, y: 291.2}
+  m_SizeDelta: {x: 1759.1, y: 291.2}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &925587367
 MonoBehaviour:
@@ -7995,7 +7995,7 @@ ParticleSystem:
     m_UseMeshMaterialIndex: 0
     m_UseMeshColors: 1
     alignToDirection: 0
-    m_Texture: {fileID: 2800000, guid: 170fa5e916b6d2a49b7c474fe8a5b98e, type: 3}
+    m_Texture: {fileID: 2800000, guid: 2e8564570ce1a7c4fb42cee97d53fe5b, type: 3}
     m_TextureClipChannel: 3
     m_TextureClipThreshold: 0.9999999
     m_TextureUVChannel: 0
