@@ -1,67 +1,54 @@
-# zero_game.py — 엄지 UP/DOWN (정면 + 양손 2 인식 강화 버전)
+# zero_game.py — Mediapipe 원본(hand.landmark) 기반 + 정확도 향상
 
+import math
 from collections import deque
 
 SMOOTH_N = 5
-zero_buf = deque(maxlen=SMOOTH_N)
+zero_buffer = deque(maxlen=SMOOTH_N)
 
-# 손가락 길이에 대한 비율 기준 (스케일 자동 보정)
-L_STRICT = 0.8   # 한 손에서 "엄지 확실히 든" 기준
-L_LOOSE  = 0.4   # 양손에서 "엄지 꽤 든" 기준 (2 판정용)
+# 엄지 인식 기준값 (정면 카메라 기준)
+UP_Y_T   = 0.018    # TIP이 MCP보다 이 정도 위면 "올림"
+CURVE_T  = 0.010    # TIP이 IP보다 위로 구부러진 값
+SIDE_T   = 0.030    # 좌/우 흔들림 억제
 
+def _dist(a, b):
+    return math.hypot(a.x - b.x, a.y - b.y)
 
-def _thumb_lift_ratio(hand):
-    """
-    엄지 TIP이 IP, MCP보다 얼마나 위에 있는지
-    손가락 길이(|IP-MCP|)로 정규화한 비율을 리턴
-    """
+def _thumb_up(hand):
     tip = hand.landmark[4]
     ip  = hand.landmark[3]
     mcp = hand.landmark[2]
 
-    finger_len = abs(ip.y - mcp.y) + 1e-6  # 0 나누기 방지
+    # 1) 세로로 충분히 올라갔는지
+    vertical = (tip.y < mcp.y - UP_Y_T)
 
-    lift_ip  = (ip.y  - tip.y) / finger_len   # TIP이 IP보다 위면 + 방향
-    lift_mcp = (mcp.y - tip.y) / finger_len   # TIP이 MCP보다 위면 + 방향
+    # 2) 구부러진 형태(엄지가 실제로 들렸을 때)
+    curved = (tip.y < ip.y - CURVE_T)
 
-    return lift_ip, lift_mcp
+    # 3) 가로 흔들림에 대한 안정성 → 2손 붙였을 때 매우 중요
+    # TIP과 MCP의 x 차이가 너무 크면 정확도 떨어짐 → 손가락 벌림 오판 방지
+    stable = abs(tip.x - mcp.x) < SIDE_T
 
-
-def _thumb_up_strict(hand):
-    lift_ip, lift_mcp = _thumb_lift_ratio(hand)
-    return (lift_ip > L_STRICT) and (lift_mcp > L_STRICT)
-
-
-def _thumb_up_loose(hand):
-    lift_ip, lift_mcp = _thumb_lift_ratio(hand)
-    return (lift_ip > L_LOOSE) and (lift_mcp > L_LOOSE)
+    return (vertical or curved) and stable
 
 
 def count_thumbs(hand_list):
-    # 손이 아예 없으면 0 유지
     if not hand_list:
-        zero_buf.append(0)
-        return zero_buf[-1]
+        zero_buffer.append(0)
+        return zero_buffer[-1]
 
-    # 각 손 엄지 상태 계산
-    strict_flags = [_thumb_up_strict(h) for h in hand_list]
-    loose_flags  = [_thumb_up_loose(h)  for h in hand_list]
+    cnt = 0
+    for hand in hand_list:
+        try:
+            if _thumb_up(hand):
+                cnt += 1
+        except:
+            pass
 
-    strict_count = sum(strict_flags)
-    loose_count  = sum(loose_flags)
+    zero_buffer.append(cnt)
 
-    # 기본값: 한 손 기준 엄격 카운트
-    curr = strict_count
+    # 최근 N개가 모두 같으면 확정
+    if len(zero_buffer) == zero_buffer.maxlen and len(set(zero_buffer)) == 1:
+        return zero_buffer[-1]
 
-    # 손이 두 개 이상 있을 때,
-    # 둘 다 "느슨 기준" 이상이면 2로 강제 판정
-    if len(hand_list) >= 2 and loose_count >= 2:
-        curr = 2
-
-    zero_buf.append(curr)
-
-    # 스무딩: 최근 N개가 모두 같으면 그 값 확정
-    if len(zero_buf) == zero_buf.maxlen and len(set(zero_buf)) == 1:
-        return zero_buf[-1]
-
-    return zero_buf[-1]
+    return zero_buffer[-1]
