@@ -269,6 +269,7 @@ GameObject:
   - component: {fileID: 237538184}
   - component: {fileID: 237538185}
   - component: {fileID: 237538186}
+  - component: {fileID: 237538187}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -365,7 +366,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 535ce42354e33d341be78716a8051e14, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  instructionText: {fileID: 925587367}
+  nowGame_Text_Reference: {fileID: 241665233}
+--- !u!114 &237538187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237538182}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 738d570bdd8b558488c5e7fa1cbbe695, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
   nowGame_Text_Reference: {fileID: 241665233}
 --- !u!1 &241665231
 GameObject:
@@ -851,7 +864,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uCC38\uCC38\uCC38"
+  m_text: "\uC81C\uB85C\uAC8C\uC784"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6a97ab682fd4f574fbe0d330682a1d85, type: 2}
   m_sharedMaterial: {fileID: 483245545733407209, guid: 6a97ab682fd4f574fbe0d330682a1d85, type: 2}
@@ -2187,7 +2200,7 @@ ParticleSystem:
     radiusThickness: 1
     donutRadius: 0.2
     m_Position: {x: 0, y: 0, z: 0}
-    m_Rotation: {x: 90, y: 15, z: 0}
+    m_Rotation: {x: 90, y: 5, z: 0}
     m_Scale: {x: 1.58, y: 1, z: 1}
     placementMode: 0
     m_MeshMaterialIndex: 0
@@ -6276,7 +6289,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 778547151}
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0.7071068, w: 0}
-  m_LocalPosition: {x: -964, y: -537.57, z: 0}
+  m_LocalPosition: {x: -964.9, y: -537.57, z: 0}
   m_LocalScale: {x: 5.7800016, y: 5.779997, z: 5.779997}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -6539,7 +6552,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: -437.1877, y: 0, z: -437.18787, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0

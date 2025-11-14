@@ -16,9 +16,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
     public static RPS_Webcam_Controller Instance { get; private set; }
     // ▲▲▲ [추가] ▲▲▲
 
-    [Header("UI (미션 표시용)")]
-    [SerializeField] private TextMeshProUGUI instructionText; // (InGameManager의 missionText를 사용하므로 이 변수는 이제 사용 안 함)
-
     [Header("게임 상태 참조용")]
     [SerializeField] private TextMeshProUGUI nowGame_Text_Reference;
 
@@ -42,7 +39,7 @@ public class RPS_Webcam_Controller : MonoBehaviour
     // --- UDP 네트워크 수신 관련 변수 ---
     private Thread receiveThread;
     private UdpClient client;
-    private int port = 12345;
+    private int port = 12345;       
 
     private int lastPlayerHandVal = HAND_NONE;
 

@@ -27,7 +27,7 @@ public class InGameManager : MonoBehaviour
 
     private bool isGame = false;        // 게임 중인지
     private int nowGame = 0;    // 현재 게임 (0 : 가위바위보, 1 : 참참참, 2 : 제로게임)
-    private int nextGame = 1;   // 다음 게임 (0 : 가위바위보, 1 : 참참참, 2 : 제로게임)
+    private int nextGame = 2;   // 다음 게임 (0 : 가위바위보, 1 : 참참참, 2 : 제로게임)
 
     private int playerHand = 0;  // 플레이어 손
     private int oppoentHand = 0; // 상대 손
@@ -68,6 +68,10 @@ public class InGameManager : MonoBehaviour
 
     void Awake() {
         Instance = this;
+
+        nowGame_Text.text = gameList[nowGame];
+        nextGame_Text.text = gameList[nextGame];
+
     }
     void Update() 
         {
@@ -79,6 +83,9 @@ public class InGameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Z)) playerHandChange(0);
         if (Input.GetKeyDown(KeyCode.X)) playerHandChange(1);
         if (Input.GetKeyDown(KeyCode.C)) playerHandChange(2);
+        if (Input.GetKeyDown(KeyCode.A)) playerHandChange(6);
+        if (Input.GetKeyDown(KeyCode.S)) playerHandChange(7);
+        if (Input.GetKeyDown(KeyCode.D)) playerHandChange(8);
     }
 
     private bool miniEnd = false;
@@ -114,13 +121,11 @@ public class InGameManager : MonoBehaviour
                     RPS_Webcam_Controller.Instance.JudgeRPSResult(); // 가위바위보 패배, 승리 여부 판단
                     break;                          
                 case 1:
-                    missionString = "참참참 시작!";
-                    // ChamChamChamClearOrFali();   -> 참참참 클리어 여부
+                    missionString = "참참참!";
                     break;                          // 참참참.cs에서 이걸 불러오기
                 case 2:
-                    missionString = "제로게임 시작!";
-                    // ZeroGameClearOrFali();       -> 제로게임 클리어 여부
-                    break;                          // 제로게임.cs에서 이걸 불러오기
+                    ZeroGame_Main.Instance.JudgeZeroGameResult();
+                    break;                         
                 default:
                     break;
             }
@@ -159,7 +164,6 @@ public class InGameManager : MonoBehaviour
     // 미니게임 성공 시, 함수를 호출 (본인의 스크립트에서 미니게임 성공 조건을 달성했다면 이걸 호출하세요)
     public void gameClear()
     {
-        Debug.Log("출력");
         // AudioManager.Instance.playSFX(); // 클리어 효과음 재생예정
         _Combo++;
         clearedGame++;
