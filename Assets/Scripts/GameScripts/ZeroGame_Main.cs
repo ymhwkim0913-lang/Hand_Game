@@ -36,17 +36,6 @@ public class ZeroGame_Main : MonoBehaviour
     // 값이 즉시 갱신되도록 보장해줍니다. (네트워크 스레드와 메인 스레드)
     private volatile bool isMissionActive = false; // "제로게임" 미션이 설정되었는지 확인용
 
-    // --- UDP 네트워크 변수 ---
-    private Thread receiveThread;
-    private UdpClient client;
-    private int port = 12343; // Python 스크립트와 포트 번호를 일치시킵니다.
-    // [오류] 가위바위보와 포트가 같으면 오류가 발생함 (수정 필요)
-    private int lastPlayerHandVal = HAND_NONE;
-
-    // --- 데이터 공유 큐 ---
-    private Queue<int> handDataQueue = new Queue<int>();
-    private readonly object queueLock = new object();
-
     // --- 1. 싱글톤 인스턴스 설정 ---
     void Awake()
     {
@@ -67,26 +56,12 @@ public class ZeroGame_Main : MonoBehaviour
         {
             Debug.LogError("ZeroGame_Main: 'Now Game Text Reference'가 연결되지 않았습니다!");
         }
-
-        // 큐 초기화
-        lock (queueLock)
-        {
-            handDataQueue.Clear();
-        }
-
-        // UDP 수신 스레드 시작
-        receiveThread = new Thread(new ThreadStart(ReceiveData));
-        receiveThread.IsBackground = true;
-        receiveThread.Start();
     }
 
     // --- 3. "스위치" 작동 (메인 스레드) ---
     // 매 프레임마다 InGameManager의 텍스트를 감시
     void Update()
     {
-        // 큐에 데이터가 있으면 처리
-        ProcessQueue();
-
         if (nowGame_Text_Reference == null) return;
 
         // InGameManager의 'gameList'에 적힌 문자열과 정확히 일치해야 합니다.
@@ -109,89 +84,11 @@ public class ZeroGame_Main : MonoBehaviour
         }
     }
 
-    #region 네트워크 및 데이터 처리 (RPS와 동일한 구조)
-
-    // --- 5. 데이터 수신 (네트워크 스레드) ---
-    private void ReceiveData()
-    {
-        client = new UdpClient(port);
-        while (true)
-        {
-            try
-            {
-                IPEndPoint anyIP = new IPEndPoint(IPAddress.Any, 0);
-                byte[] data = client.Receive(ref anyIP);
-                string text = Encoding.UTF8.GetString(data);
-
-                // Python에서 0, 1, 2 (엄지 개수)를 보냄
-                int detectedHandVal = int.Parse(text.Trim());
-
-                // 유효한 값(0, 1, 2)인지, 값이 바뀌었는지 확인
-                if (detectedHandVal >= 0 && detectedHandVal <= 2)
-                {
-                    if (detectedHandVal != lastPlayerHandVal)
-                    {
-                        lastPlayerHandVal = detectedHandVal;
-
-                        // "제로게임" 미션이 활성화 상태일 때(스위치가 켜졌을 때)만 큐에 넣음
-                        if (isMissionActive)
-                        {
-                            lock (queueLock)
-                            {
-                                handDataQueue.Enqueue(detectedHandVal);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception err)
-            {
-                Debug.LogWarning($"[ZeroGame_Main] UDP Receive Error: {err.ToString()}");
-            }
-        }
-    }
-
-    // --- 6. 큐 처리 (메인 스레드) ---
-    private void ProcessQueue()
-    {
-        while (handDataQueue.Count > 0)
-        {
-            int handVal;
-            lock (queueLock)
-            {
-                handVal = handDataQueue.Dequeue();
-            }
-
-            // 큐에서 꺼냈을 때도 스위치가 켜져 있는지 확인
-            if (isMissionActive)
-            {
-                ProcessHandData(handVal);
-            }
-        }
-    }
-
-    // --- 7. "번역" (메인 스레드) ---
-    private void ProcessHandData(int playerVal) // playerVal은 0, 1, 2
-    {
-        // [핵심 매핑] Python의 0,1,2 값을 InGameManager의 'handList' 인덱스 6,7,8로 "번역"
-        // (InGameManager.cs의 handList 배열: "zero_0" = 6번, "zero_1" = 7번, "zero_2" = 8번)
-        int handResourceIndex = 6 + playerVal;
-
-        // InGameManager의 playerHandChange를 호출하여 화면에 손 모양을 표시하고,
-        // InGameManager의 'playerHand' 변수에 (번역된) 6, 7, 8 값을 저장시킴
-        InGameManager.Instance.playerHandChange(handResourceIndex);
-    }
-
-    #endregion
-
     #region 제로게임 고유 로직
 
     // --- 4. 미션 설정 (RPS의 StartNewRPSMission과 동일한 역할) ---
     public void StartNewZeroMission()
     {
-        // (RPS_Webcam_Controller.cs의 Start() 함수 로직을 여기에 넣은 것과 같음)
-        lastPlayerHandVal = HAND_NONE;
-
         // 1. 제로게임 미션 생성
         playerCall = UnityEngine.Random.Range(0, 5); // 0~4 중 랜덤 숫자 선택
         isAttackMode = (UnityEngine.Random.Range(0, 2) == 0); // 50% 확률로 공격/수비 모드 결정
@@ -285,17 +182,4 @@ public class ZeroGame_Main : MonoBehaviour
     }
 
     #endregion
-
-    // --- 11. 종료 시 스레드 정리 ---
-    void OnApplicationQuit()
-    {
-        if (receiveThread != null && receiveThread.IsAlive)
-        {
-            receiveThread.Abort();
-        }
-        if (client != null)
-        {
-            client.Close();
-        }
-    }
 }

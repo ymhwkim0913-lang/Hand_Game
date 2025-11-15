@@ -31,19 +31,6 @@ public class ChamChamCham_Webcam_Controller : MonoBehaviour
 
     private bool isMissionActive = false; // 현재 미션이 진행 중인지 (중복 판정 방지)
 
-    // --- UDP 네트워크 수신 관련 변수 ---
-    private Thread receiveThread;
-    private UdpClient client;
-    private int port = 12346; // Python과 동일한 포트 사용
-
-    // '마지막으로 낸 손'을 저장하는 변수 (3, 4, 5 또는 0:손없음)
-    private int lastPlayerHandVal = 0; // 0으로 초기화. (0은 유효한 손 모양 값이 아니므로 '손 없음' 상태로 사용)
-
-    // 메인 스레드와 네트워크 스레드 간의 데이터 공유를 위한 큐(Queue)
-    private Queue<int> handDataQueue = new Queue<int>();
-    // 큐 접근을 동기화하기 위한 잠금(lock) 객체
-    private readonly object queueLock = new object();
-
     void Awake()
     {
         if (Instance == null) {
@@ -60,22 +47,10 @@ public class ChamChamCham_Webcam_Controller : MonoBehaviour
         {
             Debug.LogError("ChamChamCham_Webcam_Controller: 'Now Game Text Reference'가 연결되지 않았습니다!");
         }
-
-        lock (queueLock)
-        {
-            handDataQueue.Clear();
-        }
-
-        // UDP 수신 스레드 시작
-        receiveThread = new Thread(new ThreadStart(ReceiveData));
-        receiveThread.IsBackground = true;
-        receiveThread.Start();
     }
 
     void Update()
     {
-        // 1. 큐에 쌓인 데이터(손 모양)가 있으면 메인 스레드에서 처리
-        ProcessQueue();
 
         if (nowGame_Text_Reference == null) return;
 
@@ -95,75 +70,12 @@ public class ChamChamCham_Webcam_Controller : MonoBehaviour
         }
     }
 
-    // --- UDP 수신 로직 (RPS 코드와 동일) ---
-    private void ReceiveData()
-    {
-        client = new UdpClient(port);
-        while (true)
-        {
-            try
-            {
-                IPEndPoint anyIP = new IPEndPoint(IPAddress.Any, 0);
-                byte[] data = client.Receive(ref anyIP);
-                string text = Encoding.UTF8.GetString(data);
-                int detectedHandVal = int.Parse(text.Trim());
-
-                // 지금 손 모양이 이전과 다를 때만 업데이트 (중복 데이터 처리 최소화)
-                if (detectedHandVal != lastPlayerHandVal)
-                {
-                    lastPlayerHandVal = detectedHandVal;
-
-                    if (isMissionActive)
-                    {
-                        lock (queueLock)
-                        {
-                            handDataQueue.Enqueue(detectedHandVal);
-                        }
-                    }
-                }
-            }
-            catch (Exception err) {
-                Debug.LogError(err.ToString());
-            }
-        }
-    }
-
-    // --- 큐 처리 로직 (RPS 코드와 동일) ---
-    private void ProcessQueue()
-    {
-        while (handDataQueue.Count > 0)
-        {
-            int handVal;
-            lock (queueLock)
-            {
-                handVal = handDataQueue.Dequeue();
-            }
-
-            if (isMissionActive)
-            {
-                ProcessHandData(handVal);
-            }
-        }
-    }
-
-    // --- 참참참 로직 (수정된 부분) ---
-
-    /// <summary>
-    /// (메인 스레드) 인식된 손 모양을 InGameManager에 전달 (화면 업데이트용)
-    /// </summary>
-    private void ProcessHandData(int playerVal)
-    {
-        // 1. 플레이어 손 모양을 화면에 즉시 표시
-        InGameManager.Instance.playerHandChange(playerVal);
-    }
-
+   
     /// <summary>
     /// 새 참참참 미션 시작 (컴퓨터 손 표시, 미션 텍스트, 타이머 시작)
     /// </summary>
     private void StartNewCCCMission()
     {
-        // lastPlayerHandVal을 0 (손 없음)으로 초기화
-        lastPlayerHandVal = 0;
 
         // 1. 컴퓨터가 낼 손(opponentHand)과 미션(currentMission)을 랜덤으로 결정
         int opponentHand = UnityEngine.Random.Range(HAND_LEFT, HAND_RIGHT + 1); // 3, 4, 5 중 하나
@@ -231,15 +143,5 @@ public class ChamChamCham_Webcam_Controller : MonoBehaviour
             // 플레이어 손과 컴퓨터 손이 다르면 성공
             return playerVal != opponentVal;
         }
-    }
-
-    void OnApplicationQuit()
-    {
-        if (receiveThread != null && receiveThread.IsAlive)
-        {
-            receiveThread.Abort();
-        }
-        if (client != null)
-            client.Close();
     }
 }

@@ -36,18 +36,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
 
     private bool isMissionActive = false; // "가위바위보" 미션이 설정되었는지 확인용
 
-    // --- UDP 네트워크 수신 관련 변수 ---
-    private Thread receiveThread;
-    private UdpClient client;
-    private int port = 12345;       
-
-    private int lastPlayerHandVal = HAND_NONE;
-
-    // 메인 스레드와 네트워크 스레드 간의 데이터 공유를 위한 큐(Queue)
-    private Queue<int> handDataQueue = new Queue<int>();
-    // 큐 접근을 동기화하기 위한 잠금(lock) 객체
-    private readonly object queueLock = new object();
-
     // ▼▼▼ [추가] 싱글톤 인스턴스 설정 ▼▼▼
     void Awake() {
         if (Instance == null) {
@@ -65,21 +53,10 @@ public class RPS_Webcam_Controller : MonoBehaviour
         {
             Debug.LogError("RPS_Webcam_Controller: 'Now Game Text Reference'가 연결되지 않았습니다!");
         }
-
-        lock (queueLock)
-        {
-            handDataQueue.Clear();
-        }
-
-        receiveThread = new Thread(new ThreadStart(ReceiveData));
-        receiveThread.IsBackground = true;
-        receiveThread.Start();
     }
 
     void Update()
     {
-        // 1. 큐에 쌓인 데이터(손 모양)가 있으면 메인 스레드에서 처리
-        ProcessQueue();
 
         if (nowGame_Text_Reference == null) return;
 
@@ -100,66 +77,12 @@ public class RPS_Webcam_Controller : MonoBehaviour
         }
     }
 
-    #region (수정 불필요) 네트워크 및 손 모양 처리
-    private void ReceiveData()
-    {
-        client = new UdpClient(port);
-        while (true)
-        {
-            try
-            {
-                IPEndPoint anyIP = new IPEndPoint(IPAddress.Any, 0);
-                byte[] data = client.Receive(ref anyIP);
-                string text = Encoding.UTF8.GetString(data);
-                int detectedHandVal = int.Parse(text.Trim());
-
-                if (detectedHandVal != lastPlayerHandVal)
-                {
-                    lastPlayerHandVal = detectedHandVal;
-                    if (isMissionActive) // "가위바위보" 게임일 때만 큐에 넣음
-                    {
-                        lock (queueLock)
-                        {
-                            handDataQueue.Enqueue(detectedHandVal);
-                        }
-                    }
-                }
-            }
-            catch (Exception err) {
-                Debug.LogError(err.ToString());
-            }
-        }
-    }
-    private void ProcessQueue()
-    {
-        while (handDataQueue.Count > 0)
-        {
-            int handVal;
-            lock (queueLock)
-            {
-                handVal = handDataQueue.Dequeue();
-            }
-            if (isMissionActive)
-            {
-                ProcessHandData(handVal);
-            }
-        }
-    }
-    private void ProcessHandData(int playerVal)
-    {
-        // (수정) InGameManager의 playerHandChange 함수를 호출
-        InGameManager.Instance.playerHandChange(playerVal);
-    }
-    #endregion
-
-
+  
     /// <summary>
     /// 새 가위바위보 미션 "설정" (타이머 시작 X)
     /// </summary>
     public void StartNewRPSMission()
     {
-        lastPlayerHandVal = HAND_NONE; // 플레이어 손 초기화
-
         // 1. 상대방 손 랜덤 설정
         int opponentHand = UnityEngine.Random.Range(0, 3);
         InGameManager.Instance.oppoentHandChange(opponentHand);
@@ -233,27 +156,6 @@ public class RPS_Webcam_Controller : MonoBehaviour
         return success;
     }
 
-
-    void OnApplicationQuit()
-    {
-        if (receiveThread != null && receiveThread.IsAlive)
-        {
-            receiveThread.Abort();
-        }
-        if (client != null)
-            client.Close();
-    }
-
-    private string ConvertValToHandName(int val)
-    {
-        switch (val)
-        {
-            case HAND_ROCK: return "바위";
-            case HAND_PAPER: return "보";
-            case HAND_SCISSORS: return "가위";
-            default: return "??";
-        }
-    }
 
     /// <summary>
     /// 미션 텍스트를 "이겨라!", "비겨라!", "져라!"만 반환
