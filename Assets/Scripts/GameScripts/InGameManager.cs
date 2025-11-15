@@ -124,7 +124,7 @@ public class InGameManager : MonoBehaviour
                     RPS_Webcam_Controller.Instance.JudgeRPSResult(); // 가위바위보 패배, 승리 여부 판단
                     break;                          
                 case 1:
-                    missionString = "참참참!";
+                    ChamChamCham_Webcam_Controller.Instance.JubgeCCCResult();
                     break;                          // 참참참.cs에서 이걸 불러오기
                 case 2:
                     ZeroGame_Main.Instance.JudgeZeroGameResult();

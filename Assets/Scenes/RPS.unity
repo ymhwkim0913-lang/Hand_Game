@@ -393,11 +393,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 560c9f1fe3b19474e89cb8e26c04c1a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  instructionText: {fileID: 0}
   nowGame_Text_Reference: {fileID: 241665233}
-  cccTimeLimit: 3
-  cccMinTimeLimit: 0.5
-  cccTimeDecrement: 0.1
 --- !u!1 &241665231
 GameObject:
   m_ObjectHideFlags: 0
@@ -2218,7 +2214,7 @@ ParticleSystem:
     radiusThickness: 1
     donutRadius: 0.2
     m_Position: {x: 0, y: 0, z: 0}
-    m_Rotation: {x: 90, y: 5, z: 0}
+    m_Rotation: {x: 90, y: -4.39, z: 0}
     m_Scale: {x: 1.58, y: 1, z: 1}
     placementMode: 0
     m_MeshMaterialIndex: 0
@@ -7972,7 +7968,7 @@ ParticleSystem:
     radiusThickness: 1
     donutRadius: 0.2
     m_Position: {x: 0, y: 0, z: 0}
-    m_Rotation: {x: 90, y: 5, z: 0}
+    m_Rotation: {x: 90, y: -4.39, z: 0}
     m_Scale: {x: 1.58, y: 1, z: 1}
     placementMode: 0
     m_MeshMaterialIndex: 0

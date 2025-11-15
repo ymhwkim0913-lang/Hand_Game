@@ -50,7 +50,12 @@ public class RPS_Webcam_Controller : MonoBehaviour
 
     // ▼▼▼ [추가] 싱글톤 인스턴스 설정 ▼▼▼
     void Awake() {
-        Instance = this;
+        if (Instance == null) {
+            Instance = this;
+        }
+        else {
+            Destroy(gameObject);
+        }
     }
     // ▲▲▲ [추가] ▲▲▲
 

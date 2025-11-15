@@ -51,7 +51,12 @@ public class ZeroGame_Main : MonoBehaviour
     void Awake()
     {
         // InGameManager가 'Instance'를 사용할 수 있도록 자신을 할당합니다.
-        Instance = this;
+        if (Instance == null) {
+            Instance = this;
+        }
+        else {
+            Destroy(gameObject);
+        }
     }
 
     // --- 2. 초기 설정 및 스레드 시작 ---
