@@ -173,19 +173,19 @@ public class InGameManager : MonoBehaviour
 
     // ▼▼▼ [추가] 네트워크 스레드에서 큐에 쌓인 데이터를 처리하는 함수 ▼▼▼
     private void ProcessHandDataQueue() {
-
+        
         while (handDataQueue.Count > 0) {
             int[] handArray;
             lock (queueLock) {
                 handArray = handDataQueue.Dequeue();
             }
-
+            
             // handArray[3]와 nowGame을 기반으로 최종 playerHand 값을 매핑
             if (handArray == null || handArray.Length != 3) continue;
 
             int finalHandValue = -1;
             int gameSpecificValue = -1;
-
+            
             switch (nowGame) {
                 // nowGame 0: 가위바위보
                 case 0:
@@ -239,7 +239,6 @@ public class InGameManager : MonoBehaviour
         receiveThread = new Thread(new ThreadStart(ReceiveData));
         receiveThread.IsBackground = true;
         receiveThread.Start();
-
         Debug.Log("UDP Thread Started. Listening on port " + port);
     }
 
