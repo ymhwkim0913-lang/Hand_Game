@@ -1,4 +1,11 @@
-﻿using TMPro;
+﻿using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using TMPro;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 public class InGameManager : MonoBehaviour
@@ -66,15 +73,30 @@ public class InGameManager : MonoBehaviour
     private RectTransform timeGauge;
     #endregion
 
+    // ▼▼▼ [추가] UDP 네트워크 변수들 ▼▼▼
+    private Thread receiveThread;
+    private UdpClient client;
+    private int port = 12345; // 파이썬과 동일하게 맞출 포트
+
+    // 네트워크 스레드 -> 메인 스레드 데이터 전달용 큐
+    private Queue<int[]> handDataQueue = new Queue<int[]>();
+    private readonly object queueLock = new object();
+    private int[] lastReceivedHandArray = null; // 마지막으로 받은 배열 (중복 전송 방지용)
+    // ▲▲▲ [추가] ▲▲▲
+
     void Awake() {
         Instance = this;
 
         nowGame_Text.text = gameList[nowGame];
         nextGame_Text.text = gameList[nextGame];
 
+        InitializeUDP();
     }
-    void Update() 
-        {
+
+    void Update() {
+
+        ProcessHandDataQueue();
+
         if (!isGame) return;
 
         timeTick();
@@ -149,9 +171,137 @@ public class InGameManager : MonoBehaviour
         else remainTime_Text.text = remainTime.ToString("F1");
     }
 
+    // ▼▼▼ [추가] 네트워크 스레드에서 큐에 쌓인 데이터를 처리하는 함수 ▼▼▼
+    private void ProcessHandDataQueue() {
 
+        while (handDataQueue.Count > 0) {
+            int[] handArray;
+            lock (queueLock) {
+                handArray = handDataQueue.Dequeue();
+            }
 
+            // handArray[3]와 nowGame을 기반으로 최종 playerHand 값을 매핑
+            if (handArray == null || handArray.Length != 3) continue;
 
+            int finalHandValue = -1;
+            int gameSpecificValue = -1;
+
+            switch (nowGame) {
+                // nowGame 0: 가위바위보
+                case 0:
+                    gameSpecificValue = handArray[0]; // 배열의 첫 번째 값
+                    // [매핑] 
+                    // 파이썬 (0:가위, 1:바위, 2:보) -> handList (1:가위, 0:바위, 2:보)
+                    if (gameSpecificValue == 0) finalHandValue = 1; // 0(가위) -> 1(scissors)
+                    else if (gameSpecificValue == 1) finalHandValue = 0; // 1(바위) -> 0(rock)
+                    else if (gameSpecificValue == 2) finalHandValue = 2; // 2(보) -> 2(paper)
+                    break;
+                // nowGame 1: 참참참
+                case 1:
+                    gameSpecificValue = handArray[1]; // 배열의 두 번째 값
+                    // [매핑]
+                    // 파이썬 (0:왼, 1:중, 2:오) -> handList (3:왼, 4:중, 5:오)
+                    if (gameSpecificValue >= 0 && gameSpecificValue <= 2) {
+                        finalHandValue = gameSpecificValue + 3; // 0->3, 1->4, 2->5
+                    }
+                    break;
+
+                // nowGame 2: 제로게임
+                case 2:
+                    gameSpecificValue = handArray[2]; // 배열의 세 번째 값
+                    // [매핑]
+                    // 파이썬 (0:0, 1:1, 2:2) -> handList (6:0, 7:1, 8:2)
+                    if (gameSpecificValue >= 0 && gameSpecificValue <= 2) {
+                        finalHandValue = gameSpecificValue + 6; // 0->6, 1->7, 2->8
+                    }
+                    break;
+            }
+
+            // 유효한 값이 매핑되었을 때만 playerHandChange 호출
+            if (finalHandValue != -1) {
+                playerHandChange(finalHandValue);
+            }
+        }
+    }
+    // ▲▲▲ [추가] ▲▲▲
+
+    // ▼▼▼ [추가] UDP 통신 관련 함수들 ▼▼▼
+
+    /// <summary>
+    /// UDP 수신 스레드 초기화
+    /// </summary>
+    private void InitializeUDP() {
+        lock (queueLock) {
+            handDataQueue.Clear();
+        }
+        lastReceivedHandArray = null;
+
+        receiveThread = new Thread(new ThreadStart(ReceiveData));
+        receiveThread.IsBackground = true;
+        receiveThread.Start();
+
+        Debug.Log("UDP Thread Started. Listening on port " + port);
+    }
+
+    /// <summary>
+    /// UDP 데이터 수신 스레드 (백그라운드 실행)
+    /// </summary>
+    private void ReceiveData() {
+        client = new UdpClient(port);
+        while (true) {
+            try {
+                IPEndPoint anyIP = new IPEndPoint(IPAddress.Any, 0);
+                byte[] data = client.Receive(ref anyIP); // 파이썬에서 보낸 byte 배열
+
+                // 파이썬에서 1바이트 정수 3개를 보냈다고 가정 (총 3바이트)
+                // 예: [0, 1, 2]
+                if (data != null && data.Length == 3) {
+                    // byte[] -> int[] 변환
+                    int[] detectedHandArray = new int[3];
+                    detectedHandArray[0] = (int)data[0];
+                    detectedHandArray[1] = (int)data[1];
+                    detectedHandArray[2] = (int)data[2];
+
+                    // 마지막 값과 비교하여 다를 때만 큐에 추가 (최적화)
+                    if (!AreArraysEqual(detectedHandArray, lastReceivedHandArray)) {
+                        lastReceivedHandArray = detectedHandArray;
+                        lock (queueLock) {
+                            handDataQueue.Enqueue(detectedHandArray);
+                        }
+                    }
+                }
+                // (참고) 만약 파이썬에서 4바이트 int 3개를 보낸다면 (총 12바이트)
+                // else if (data != null && data.Length == 12)
+                // {
+                //    int[] detectedHandArray = new int[3];
+                //    detectedHandArray[0] = System.BitConverter.ToInt32(data, 0);
+                //    detectedHandArray[1] = System.BitConverter.ToInt32(data, 4);
+                //    detectedHandArray[2] = System.BitConverter.ToInt32(data, 8);
+                //    
+                //    if (!AreArraysEqual(detectedHandArray, lastReceivedHandArray))
+                //    { ... (큐에 추가) ... }
+                // }
+
+            }
+            catch (Exception err) {
+                Debug.LogError(err.ToString());
+            }
+        }
+    }
+
+    /// <summary>
+    /// 두 int 배열의 내용이 같은지 비교 (Helper 함수)
+    /// </summary>
+    private bool AreArraysEqual(int[] arr1, int[] arr2) {
+        if (arr1 == null && arr2 == null) return true;
+        if (arr1 == null || arr2 == null) return false;
+        if (arr1.Length != arr2.Length) return false;
+
+        for (int i = 0; i < arr1.Length; i++) {
+            if (arr1[i] != arr2[i]) return false;
+        }
+        return true;
+    }
 
 
 
@@ -296,7 +446,7 @@ public class InGameManager : MonoBehaviour
         nowGame = nextGame;
         nowGame_Text.text = gameList[nowGame];
         
-        int randInt = Random.Range(0, 3);
+        int randInt = UnityEngine.Random.Range(0, 3);
         nextGame = randInt;
         nextGame_Text.text = gameList[randInt];
 
@@ -322,4 +472,14 @@ public class InGameManager : MonoBehaviour
         minigameTime = partTime;
         miniEnd = false;
     }
+
+    void OnApplicationQuit() {
+        if (receiveThread != null && receiveThread.IsAlive) {
+            receiveThread.Abort();
+        }
+        if (client != null)
+            client.Close();
+    }
+
 }
+
