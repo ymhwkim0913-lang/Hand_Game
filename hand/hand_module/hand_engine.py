@@ -12,10 +12,9 @@ from feature_extract import extract_features
 
 class HandEngine:
     def __init__(self):
-        # 손 검출기
         self.detector = HandDetector()
 
-        # RPS 모델 로드
+        # RPS 모델
         try:
             with open("rps_model.pkl", "rb") as f:
                 self.rps_model = pickle.load(f)
@@ -24,42 +23,51 @@ class HandEngine:
             print("❌ rps_model.pkl 로드 실패:", e)
             self.rps_model = None
 
+        # 🔥 마지막 값 저장 (초기값)
+        self.last_rps = 0     # rock
+        self.last_zero = 0    # zero=0개
+        self.last_cham = 1    # middle
+
     def _predict_rps(self, hand_list):
-        """
-        hand_list: detector.get_landmarks(frame) 결과
-                   -> [NormalizedLandmarkList, ...]
-        첫 번째 손만 사용
-        """
+        """ rock=0, scissors=1, paper=2 """
         if not hand_list or self.rps_model is None:
-            return "no_hand"
+            return None   # 실패 표시
 
-        hand = hand_list[0]  # 첫 번째 손
-        lm = hand.landmark   # 21개 랜드마크
+        hand = hand_list[0]
+        lm = hand.landmark
 
-        coords = [[p.x, p.y, p.z] for p in lm]  # (21,3)
+        coords = [[p.x, p.y, p.z] for p in lm]
         lm_arr = np.array(coords).reshape(21, 3)
-
         feat = extract_features(lm_arr).reshape(1, -1)
-        pred = self.rps_model.predict(feat)[0]
 
-        return {0: "rock", 1: "scissors", 2: "paper"}[pred]
+        try:
+            pred = int(self.rps_model.predict(feat)[0])  # 0/1/2
+            return pred
+        except:
+            return None
 
     def process_frame(self, frame):
-        """
-        frame(BGR)을 받아서
-        (rps, zero, cham)을 반환
-        """
-        # 1) 손 랜드마크 가져오기 (항상 list)
         hands = self.detector.get_landmarks(frame)
-        # hands: [] 또는 [NormalizedLandmarkList, NormalizedLandmarkList]
 
-        # 2) 가위바위보
-        rps = self._predict_rps(hands)
+        # ----- RPS -----
+        rps_pred = self._predict_rps(hands)
+        if rps_pred is not None:
+            self.last_rps = rps_pred
+        # else: 유지됨
 
-        # 3) 제로게임 (양손 엄지 개수)
-        zero = count_thumbs(hands)
+        # ----- Zero Game -----
+        zero_val = count_thumbs(hands)  # 0~2
+        if zero_val in [0, 1, 2]:
+            self.last_zero = zero_val
+        # else: 유지됨
 
-        # 4) 참참참 (손 방향)
-        cham = detect_hand_orientation(hands)
+        # ----- Cham Cham Cham -----
+        cham_str = detect_hand_orientation(hands)
+        cham_map = {"left": 0, "middle": 1, "right": 2}
 
-        return rps, zero, cham
+        if cham_str in cham_map:
+            self.last_cham = cham_map[cham_str]
+        # "none" 등은 유지됨
+
+        # 최종 반환 (항상 0/1/2 보장)
+        return [self.last_rps, self.last_zero, self.last_cham]
