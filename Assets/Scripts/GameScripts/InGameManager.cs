@@ -83,6 +83,9 @@ public class InGameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Z)) playerHandChange(0);
         if (Input.GetKeyDown(KeyCode.X)) playerHandChange(1);
         if (Input.GetKeyDown(KeyCode.C)) playerHandChange(2);
+        if (Input.GetKeyDown(KeyCode.Q)) playerHandChange(3);
+        if (Input.GetKeyDown(KeyCode.W)) playerHandChange(4);
+        if (Input.GetKeyDown(KeyCode.E)) playerHandChange(5);
         if (Input.GetKeyDown(KeyCode.A)) playerHandChange(6);
         if (Input.GetKeyDown(KeyCode.S)) playerHandChange(7);
         if (Input.GetKeyDown(KeyCode.D)) playerHandChange(8);
